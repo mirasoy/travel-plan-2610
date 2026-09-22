@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>10월 황금연휴 여행 비교 총정리</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans KR', sans-serif; background: #f0f2f5; color: #1a1a1a; padding: 16px; line-height: 1.6; }
+  h1 { font-size: 1.2rem; font-weight: 800; text-align: center; margin-bottom: 4px; color: #111; }
+  .subtitle { text-align: center; font-size: 0.82rem; color: #888; margin-bottom: 20px; }
+
+  /* 요약 비교표 */
+  .summary-card { background: #fff; border-radius: 14px; padding: 16px; margin-bottom: 16px; box-shadow: 0 1px 6px rgba(0,0,0,0.09); }
+  .summary-card h2 { font-size: 0.9rem; font-weight: 700; color: #555; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 12px; }
+  .rank-row { display: flex; align-items: center; padding: 8px 0; border-bottom: 1px solid #f0f0f0; gap: 10px; }
+  .rank-row:last-child { border-bottom: none; }
+  .rank-num { font-size: 1rem; font-weight: 800; width: 22px; text-align: center; flex-shrink: 0; }
+  .rank-num.gold { color: #f59e0b; }
+  .rank-num.silver { color: #94a3b8; }
+  .rank-num.bronze { color: #b45309; }
+  .rank-num.four { color: #94a3b8; }
+  .rank-num.five { color: #94a3b8; }
+  .rank-city { flex: 1; }
+  .rank-city .city-name { font-size: 0.95rem; font-weight: 700; }
+  .rank-city .city-sub { font-size: 0.75rem; color: #888; }
+  .rank-price { text-align: right; }
+  .rank-price .total { font-size: 1rem; font-weight: 700; color: #111; }
+  .rank-price .per { font-size: 0.75rem; color: #666; }
+  .badge { display: inline-block; font-size: 0.68rem; padding: 1px 7px; border-radius: 20px; margin-left: 6px; vertical-align: middle; }
+  .badge-best { background: #dcfce7; color: #15803d; font-weight: 600; }
+  .badge-warn { background: #fef3c7; color: #92400e; font-weight: 600; }
+  .badge-sold { background: #fee2e2; color: #b91c1c; font-weight: 600; }
+
+  /* 도시 카드 */
+  .city-card { background: #fff; border-radius: 14px; padding: 16px; margin-bottom: 14px; box-shadow: 0 1px 6px rgba(0,0,0,0.09); }
+  .city-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; padding-bottom: 10px; border-bottom: 2px solid #f0f0f0; }
+  .city-header-left .city-title { font-size: 1.05rem; font-weight: 800; }
+  .city-header-left .city-flag { font-size: 0.8rem; color: #888; margin-top: 1px; }
+  .city-total-box { text-align: right; }
+  .city-total-box .total-price { font-size: 1.05rem; font-weight: 800; color: #2563eb; }
+  .city-total-box .per-price { font-size: 0.75rem; color: #777; }
+
+  .section-label { font-size: 0.72rem; font-weight: 700; color: #aaa; text-transform: uppercase; letter-spacing: 0.06em; margin: 10px 0 6px; }
+  .info-row { display: flex; justify-content: space-between; font-size: 0.88rem; margin-bottom: 3px; }
+  .info-row .lbl { color: #666; }
+  .info-row .val { font-weight: 500; text-align: right; max-width: 65%; }
+  .highlight-box { background: #f8faff; border-left: 3px solid #3b82f6; border-radius: 0 8px 8px 0; padding: 8px 12px; margin-top: 8px; }
+  .highlight-box .main { font-size: 0.95rem; font-weight: 700; color: #1d4ed8; }
+  .highlight-box .sub { font-size: 0.78rem; color: #64748b; margin-top: 1px; }
+
+  .option-block { background: #f9f9f9; border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; }
+  .option-block .option-title { font-size: 0.78rem; font-weight: 700; color: #555; margin-bottom: 5px; }
+  .option-block .option-price { font-size: 0.88rem; font-weight: 700; color: #111; }
+
+  .sold-out-notice { background: #fff1f2; border: 1px solid #fecdd3; border-radius: 8px; padding: 7px 10px; font-size: 0.8rem; color: #be123c; margin-top: 8px; }
+
+  /* 복사 버튼 */
+  .copy-btn { display: block; width: 100%; margin-top: 20px; padding: 14px; background: #1d4ed8; color: #fff; border: none; border-radius: 12px; font-size: 0.95rem; font-weight: 700; cursor: pointer; transition: background 0.15s; }
+  .copy-btn:active { background: #1e40af; }
+
+  textarea#copyTarget { position: fixed; top: -9999px; left: -9999px; }
+
+  @media (max-width: 400px) {
+    body { padding: 10px; }
+    .rank-price .total { font-size: 0.9rem; }
+  }
+</style>
+</head>
+<body>
+
+<h1>10월 황금연휴 여행 비교 총정리</h1>
+<p class="subtitle">2026.10.10(토) ~ 10.12(월) / 2박 3일 / 성인 5명 기준</p>
+
+<!-- 순위 요약 -->
+<div class="summary-card">
+  <h2>비용 순위 요약 (항공 + 숙박)</h2>
+  <div class="rank-row">
+    <div class="rank-num gold">1</div>
+    <div class="rank-city">
+      <div class="city-name">중국 옌타이 <span class="badge badge-best">최저가</span></div>
+      <div class="city-sub">이스타항공 직항 / 평점 9.3 호텔</div>
+    </div>
+    <div class="rank-price">
+      <div class="total">1,504,530원</div>
+      <div class="per">1인당 300,906원</div>
+    </div>
+  </div>
+  <div class="rank-row">
+    <div class="rank-num silver">2</div>
+    <div class="rank-city">
+      <div class="city-name">일본 오사카</div>
+      <div class="city-sub">파라타/진에어 직항 / 아파트형 숙소</div>
+    </div>
+    <div class="rank-price">
+      <div class="total">1,730,000~1,815,000원</div>
+      <div class="per">1인당 346,000~363,000원</div>
+    </div>
+  </div>
+  <div class="rank-row">
+    <div class="rank-num bronze">3</div>
+    <div class="rank-city">
+      <div class="city-name">대만 타이베이</div>
+      <div class="city-sub">이스타+트리니티 / 패밀리룸</div>
+    </div>
+    <div class="rank-price">
+      <div class="total">2,157,783~2,251,310원</div>
+      <div class="per">1인당 431,557~450,262원</div>
+    </div>
+  </div>
+  <div class="rank-row">
+    <div class="rank-num four">4</div>
+    <div class="rank-city">
+      <div class="city-name">일본 도쿄 <span class="badge badge-sold">86% 매진</span></div>
+      <div class="city-sub">진에어 / 외곽 아파트형만 잔여</div>
+    </div>
+    <div class="rank-price">
+      <div class="total">2,200,000원 이상</div>
+      <div class="per">1인당 440,000원 이상</div>
+    </div>
+  </div>
+  <div class="rank-row">
+    <div class="rank-num five">5</div>
+    <div class="rank-city">
+      <div class="city-name">일본 후쿠오카</div>
+      <div class="city-sub">이스타/진에어 / 아파트형</div>
+    </div>
+    <div class="rank-price">
+      <div class="total">2,629,000~2,842,000원</div>
+      <div class="per">1인당 526,000~568,000원</div>
+    </div>
+  </div>
+</div>
+
+<!-- 옌타이 -->
+<div class="city-card">
+  <div class="city-header">
+    <div class="city-header-left">
+      <div class="city-title">중국 옌타이</div>
+      <div class="city-flag">인천 직항 / 1시간 30분</div>
+    </div>
+    <div class="city-total-box">
+      <div class="total-price">1,504,530원</div>
+      <div class="per-price">1인당 300,906원</div>
+    </div>
+  </div>
+
+  <div class="section-label">항공 - 이스타항공 (직항)</div>
+  <div class="info-row"><span class="lbl">가는 편</span><span class="val">10/10 인천 08:55 → 옌타이 09:25</span></div>
+  <div class="info-row"><span class="lbl">오는 편</span><span class="val">10/12 옌타이 16:00 → 인천 18:30</span></div>
+  <div class="info-row"><span class="lbl">항공 요금</span><span class="val">1인 230,900원 / 5인 1,154,500원</span></div>
+
+  <div class="section-label">숙소 - Intercity Hotel Yantai Binhai Square</div>
+  <div class="info-row"><span class="lbl">위치</span><span class="val">시내 0.9km (도보)</span></div>
+  <div class="info-row"><span class="lbl">객실</span><span class="val">더블룸 + 대형트윈룸 (2객실)</span></div>
+  <div class="info-row"><span class="lbl">평점</span><span class="val">9.3 / 무료주차</span></div>
+  <div class="info-row"><span class="lbl">숙박 요금</span><span class="val">2박 350,030원 (세금포함)</span></div>
+
+  <div class="highlight-box">
+    <div class="main">총 1,504,530원</div>
+    <div class="sub">1인당 약 300,906원 (식비·관광비 별도)</div>
+  </div>
+</div>
+
+<!-- 오사카 -->
+<div class="city-card">
+  <div class="city-header">
+    <div class="city-header-left">
+      <div class="city-title">일본 오사카</div>
+      <div class="city-flag">인천 직항 / 1시간 50분</div>
+    </div>
+    <div class="city-total-box">
+      <div class="total-price">1,730,000~1,815,000원</div>
+      <div class="per-price">1인당 346,000~363,000원</div>
+    </div>
+  </div>
+
+  <div class="section-label">항공 옵션</div>
+  <div class="option-block">
+    <div class="option-title">최저가 - 파라타항공</div>
+    <div class="info-row"><span class="lbl">가는 편</span><span class="val">10/10 인천 17:45 → KIX 19:35</span></div>
+    <div class="info-row"><span class="lbl">오는 편</span><span class="val">10/12 KIX 20:55 → 인천 22:55</span></div>
+    <div class="option-price">5인 1,579,000원</div>
+  </div>
+  <div class="option-block">
+    <div class="option-title">추천 - 진에어 (시간대 베스트)</div>
+    <div class="info-row"><span class="lbl">가는 편</span><span class="val">10/10 인천 16:10 → KIX 18:05</span></div>
+    <div class="info-row"><span class="lbl">오는 편</span><span class="val">10/12 고베 16:30 → 인천 18:30</span></div>
+    <div class="option-price">5인 1,663,500원</div>
+  </div>
+
+  <div class="section-label">숙소 - 谷町線歩く5분 2베드룸 빌라 (가성비)</div>
+  <div class="info-row"><span class="lbl">위치</span><span class="val">시내 3.9km / 지하철 연결</span></div>
+  <div class="info-row"><span class="lbl">객실</span><span class="val">2베드룸 빌라 (5인 수용)</span></div>
+  <div class="info-row"><span class="lbl">평점</span><span class="val">8.6</span></div>
+  <div class="info-row"><span class="lbl">숙박 요금</span><span class="val">2박 151,138원 (세금포함)</span></div>
+
+  <div class="sold-out-notice">황금연휴 76% 매진 - 호텔 2룸 거의 없음, 아파트/빌라형 위주</div>
+
+  <div class="highlight-box">
+    <div class="main">총 1,730,138원 (파라타 기준)</div>
+    <div class="sub">또는 1,814,638원 (진에어 기준) / 1인당 약 346,000~363,000원</div>
+  </div>
+</div>
+
+<!-- 타이베이 -->
+<div class="city-card">
+  <div class="city-header">
+    <div class="city-header-left">
+      <div class="city-title">대만 타이베이</div>
+      <div class="city-flag">김포-송산 직항 / 2시간 40분</div>
+    </div>
+    <div class="city-total-box">
+      <div class="total-price">2,157,783~2,251,310원</div>
+      <div class="per-price">1인당 431,557~450,262원</div>
+    </div>
+  </div>
+
+  <div class="section-label">항공 - 이스타항공 + 트리니티항공</div>
+  <div class="info-row"><span class="lbl">가는 편</span><span class="val">10/10 김포 11:15 → 송산 12:55</span></div>
+  <div class="info-row"><span class="lbl">오는 편</span><span class="val">10/12 송산 14:00 → 김포 17:25</span></div>
+  <div class="info-row"><span class="lbl">항공 요금</span><span class="val">1인 352,400원 / 5인 1,761,997원</span></div>
+
+  <div class="section-label">숙소 옵션</div>
+  <div class="option-block">
+    <div class="option-title">A. 가성비 - Giant Rich King Plaza Hotel</div>
+    <div class="info-row"><span class="lbl">위치</span><span class="val">다통 지구, 시내 1km / 공항셔틀</span></div>
+    <div class="info-row"><span class="lbl">객실</span><span class="val">패밀리룸 1실 (5인 수용)</span></div>
+    <div class="info-row"><span class="lbl">평점</span><span class="val">7.5</span></div>
+    <div class="option-price">2박 395,786원 → 합계 2,157,783원 / 1인당 431,557원</div>
+  </div>
+  <div class="option-block">
+    <div class="option-title">B. 조식 포함 - Champion Hotel</div>
+    <div class="info-row"><span class="lbl">위치</span><span class="val">Banqiao, 시내 7.2km / 지하철</span></div>
+    <div class="info-row"><span class="lbl">객실</span><span class="val">트윈룸 + 패밀리스위트 (2실)</span></div>
+    <div class="info-row"><span class="lbl">평점</span><span class="val">8.2 / 조식포함 / 무료취소</span></div>
+    <div class="option-price">2박 489,313원 → 합계 2,251,310원 / 1인당 450,262원</div>
+  </div>
+</div>
+
+<!-- 도쿄 -->
+<div class="city-card">
+  <div class="city-header">
+    <div class="city-header-left">
+      <div class="city-title">일본 도쿄</div>
+      <div class="city-flag">인천 직항 / 2시간 30분</div>
+    </div>
+    <div class="city-total-box">
+      <div class="total-price">2,200,000원 이상</div>
+      <div class="per-price">1인당 440,000원 이상</div>
+    </div>
+  </div>
+
+  <div class="section-label">항공 옵션</div>
+  <div class="option-block">
+    <div class="option-title">최저가 - 트리니티항공</div>
+    <div class="info-row"><span class="lbl">가는 편</span><span class="val">10/10 인천 → 도쿄 (시간 조정 가능)</span></div>
+    <div class="option-price">5인 1,754,950원</div>
+  </div>
+  <div class="option-block">
+    <div class="option-title">추천 - 진에어 (베스트 시간대)</div>
+    <div class="info-row"><span class="lbl">가는 편</span><span class="val">10/10 인천 10:25 → NRT 12:50</span></div>
+    <div class="info-row"><span class="lbl">오는 편</span><span class="val">10/12 NRT 14:00 → 인천 16:40</span></div>
+    <div class="option-price">5인 1,833,000원</div>
+  </div>
+
+  <div class="section-label">숙소</div>
+  <div class="sold-out-notice">황금연휴 86% 매진 - 시내 호텔 거의 소진. 외곽 아파트형만 잔여. 숙소 조건 불리함.</div>
+
+  <div class="highlight-box">
+    <div class="main">총 2,200,000원 이상 (추정)</div>
+    <div class="sub">숙소 가격 변동 가능성 높음 / 황금연휴 조건 불리</div>
+  </div>
+</div>
+
+<!-- 후쿠오카 -->
+<div class="city-card">
+  <div class="city-header">
+    <div class="city-header-left">
+      <div class="city-title">일본 후쿠오카</div>
+      <div class="city-flag">인천 직항 / 1시간 25분</div>
+    </div>
+    <div class="city-total-box">
+      <div class="total-price">2,629,000~2,842,000원</div>
+      <div class="per-price">1인당 526,000~568,000원</div>
+    </div>
+  </div>
+
+  <div class="section-label">항공 옵션</div>
+  <div class="option-block">
+    <div class="option-title">최저가 - 트리니티항공 (귀국 이름 주의)</div>
+    <div class="info-row"><span class="lbl">가는 편</span><span class="val">10/10 인천 10:05 → FUK 11:30</span></div>
+    <div class="info-row"><span class="lbl">오는 편</span><span class="val">10/12 FUK 12:30 → 인천 14:00 (너무 이름)</span></div>
+    <div class="option-price">5인 2,119,650원</div>
+  </div>
+  <div class="option-block">
+    <div class="option-title">추천 - 이스타항공</div>
+    <div class="info-row"><span class="lbl">가는 편</span><span class="val">10/10 인천 12:30 → FUK 13:50</span></div>
+    <div class="info-row"><span class="lbl">오는 편</span><span class="val">10/12 FUK 20:40 → 인천 22:10</span></div>
+    <div class="option-price">5인 2,210,500원</div>
+  </div>
+
+  <div class="section-label">숙소 옵션</div>
+  <div class="option-block">
+    <div class="option-title">A. 저렴한 편 - 竹下 inn (공항 근처)</div>
+    <div class="info-row"><span class="lbl">위치</span><span class="val">시내 4.7km (공항 근처)</span></div>
+    <div class="info-row"><span class="lbl">평점</span><span class="val">7.2</span></div>
+    <div class="option-price">2박 418,459원 (세금포함)</div>
+  </div>
+  <div class="option-block">
+    <div class="option-title">B. 추천 - 게스트하우스 나카이마</div>
+    <div class="info-row"><span class="lbl">위치</span><span class="val">시내 0.6km / 지하철 연결</span></div>
+    <div class="info-row"><span class="lbl">객실</span><span class="val">패밀리룸 (5인 수용)</span></div>
+    <div class="info-row"><span class="lbl">평점</span><span class="val">8.7 / 무료취소</span></div>
+    <div class="option-price">2박 631,570원 (세금포함)</div>
+  </div>
+
+  <div class="sold-out-notice">황금연휴 77% 매진. 항공료가 일본 3개 도시 중 가장 비쌈.</div>
+
+  <div class="highlight-box">
+    <div class="main">총 2,629,000~2,842,000원</div>
+    <div class="sub">이스타항공 + 나카이마 기준 / 1인당 약 526,000~568,000원</div>
+  </div>
+</div>
+
+<button class="copy-btn" onclick="copyAll()">전체 텍스트 복사</button>
+
+<textarea id="copyTarget">
+[ 10월 황금연휴 여행 비교 총정리 ]
+2026년 10월 10일(토) ~ 12일(월) / 2박 3일 / 성인 5명 기준
+항공 + 숙박 합산 비용
+
+==========================
+비용 순위 (항공 + 숙박)
+==========================
+1위 중국 옌타이 - 1,504,530원 / 1인당 300,906원
+2위 일본 오사카 - 1,730,000~1,815,000원 / 1인당 346,000~363,000원
+3위 대만 타이베이 - 2,157,783~2,251,310원 / 1인당 431,557~450,262원
+4위 일본 도쿄 - 2,200,000원 이상 (황금연휴 86% 매진)
+5위 일본 후쿠오카 - 2,629,000~2,842,000원 / 1인당 526,000~568,000원
+
+==========================
+1위 - 중국 옌타이
+==========================
+항공: 이스타항공 직항
+가는 편 - 10/10 인천 08:55 → 옌타이 09:25
+오는 편 - 10/12 옌타이 16:00 → 인천 18:30
+항공 요금: 1인 230,900원 / 5인 1,154,500원
+
+숙소: Intercity Hotel Yantai Binhai Square
+시내 0.9km 도보 / 더블룸+대형트윈룸 2객실 / 평점 9.3 / 무료주차
+2박 350,030원 (세금포함)
+
+총 비용: 1,504,530원 / 1인당 약 300,906원
+
+==========================
+2위 - 일본 오사카
+==========================
+항공 최저가: 파라타항공
+10/10 인천 17:45 → KIX 19:35
+10/12 KIX 20:55 → 인천 22:55
+5인 1,579,000원
+
+항공 추천: 진에어 (베스트 시간대)
+10/10 인천 16:10 → KIX 18:05
+10/12 고베 16:30 → 인천 18:30
+5인 1,663,500원
+
+숙소: 谷町線歩く5분 2베드룸 빌라
+시내 3.9km / 지하철 연결 / 평점 8.6
+2박 151,138원 (세금포함)
+
+총 비용: 1,730,000~1,815,000원 / 1인당 약 346,000~363,000원
+※ 황금연휴 76% 매진 - 호텔 대신 아파트/빌라형
+
+==========================
+3위 - 대만 타이베이
+==========================
+항공: 이스타항공 + 트리니티항공 (김포-송산 직항)
+10/10 김포 11:15 → 타이베이 송산 12:55
+10/12 송산 14:00 → 김포 17:25
+1인 352,400원 / 5인 1,761,997원
+
+숙소 A (가성비): Giant Rich King Plaza Hotel
+다통 지구 시내 1km / 패밀리룸 1실 5인 / 평점 7.5 / 공항셔틀
+2박 395,786원 → 합계 2,157,783원 / 1인당 431,557원
+
+숙소 B (조식포함): Champion Hotel
+Banqiao 시내 7.2km 지하철 / 트윈+패밀리스위트 2실 / 평점 8.2 / 조식포함 / 무료취소
+2박 489,313원 → 합계 2,251,310원 / 1인당 450,262원
+
+==========================
+4위 - 일본 도쿄
+==========================
+항공 최저가: 트리니티항공 5인 1,754,950원
+항공 추천: 진에어 10/10 인천 10:25→NRT 12:50 / 10/12 NRT 14:00→인천 16:40 / 5인 1,833,000원
+
+숙소: 황금연휴 86% 매진 - 시내 호텔 소진 / 외곽 아파트형만 잔여
+총 비용: 2,200,000원 이상 추정
+
+==========================
+5위 - 일본 후쿠오카
+==========================
+항공 추천: 이스타항공
+10/10 인천 12:30 → FUK 13:50
+10/12 FUK 20:40 → 인천 22:10
+5인 2,210,500원
+
+숙소 A (저렴): 竹下 inn - 공항 근처 4.7km / 평점 7.2 / 2박 418,459원
+숙소 B (추천): 게스트하우스 나카이마 - 시내 0.6km 지하철 / 평점 8.7 / 패밀리룸 5인 / 2박 631,570원
+
+총 비용: 2,629,000~2,842,000원 / 1인당 약 526,000~568,000원
+※ 황금연휴 77% 매진
+</textarea>
+
+<script>
+function copyAll() {
+  const ta = document.getElementById('copyTarget');
+  ta.style.position = 'static';
+  ta.select();
+  document.execCommand('copy');
+  ta.style.position = 'fixed';
+  const btn = document.querySelector('.copy-btn');
+  btn.textContent = '복사 완료!';
+  setTimeout(() => btn.textContent = '전체 텍스트 복사', 2000);
+}
+</script>
+</body>
+</html>
