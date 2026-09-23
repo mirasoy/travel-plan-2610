@@ -297,7 +297,8 @@ const cityData = {
     ],
     pros: ['조용한 해변과 여유로운 분위기 — 관광객 적어 붐비지 않음', '중국 도시 중 가성비 2위 — 항공+숙박 모두 저렴', '이스타항공 직항으로 왕복 모두 낮 시간 비행'],
     cons: ['관광 인프라 칭다오보다 부족 — 한국어·영어 안내 거의 없음', '시내 중심까지 14.4km — 이동 불편, 택시/차량 필수']
-  },
+  }
+};
 </script>
 <script>
 Object.assign(cityData, {
@@ -444,6 +445,32 @@ document.addEventListener('keydown', function(e) {
     document.getElementById('modal-overlay').style.display = 'none';
     document.body.style.overflow = '';
   }
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('.card').forEach(function(card) {
+    var oc = card.getAttribute('onclick');
+    if (!oc) return;
+    var match = oc.match(/openModal\('(\w+)'\)/);
+    if (!match) return;
+    var cityId = match[1];
+    card.removeAttribute('onclick');
+    card.setAttribute('role', 'button');
+    card.setAttribute('tabindex', '0');
+    function trigger(e) {
+      if (e.target.closest && e.target.closest('.btn-link')) return;
+      openModal(cityId);
+    }
+    card.addEventListener('click', trigger);
+    card.addEventListener('touchend', function(e) {
+      if (e.target.closest && e.target.closest('.btn-link')) return;
+      e.preventDefault();
+      openModal(cityId);
+    });
+    card.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter' || e.key === ' ') openModal(cityId);
+    });
+  });
 });
 </script>
 </body>
