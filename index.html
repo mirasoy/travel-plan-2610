@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>가족여행 도시별 비용 비교 | 서울 출발 2박 3일</title>
+<title>미라네 가족여행 도시별 비용 비교 | 서울 출발 2박 3일</title>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif; background: #f0f4f8; color: #1a202c; }
@@ -46,7 +46,7 @@ header .sub { font-size: 0.9rem; opacity: 0.85; }
 </head>
 <body>
 <header>
-  <h1>가족여행 도시별 비용 비교</h1>
+  <h1>미라네 가족여행 도시별 비용 비교</h1>
   <div class="sub">서울 출발 &rarr; 2026년 10월 10일(토) &ndash; 12일(월) | 2박 3일</div>
   <div style="margin-top:10px;">
     <span class="badge">성인 5명</span>
@@ -237,24 +237,34 @@ tr:hover td { background: #f7fafc; }
 </div>
 
 <style>
-.cost-table { width:100%; border-collapse:collapse; font-size:0.85rem; }
-.cost-table td { padding:7px 10px; border-bottom:1px solid #edf2f7; }
+.cost-table { width:100%; border-collapse:collapse; font-size:0.85rem; table-layout:fixed; }
+.cost-table td { padding:7px 10px; border-bottom:1px solid #edf2f7; word-break:break-word; overflow-wrap:anywhere; vertical-align:top; }
 .cost-table tr:last-child td { border-bottom:none; font-weight:700; background:#f7fafc; }
-.cost-table .ct-label { color:#718096; width:55%; }
+.cost-table .ct-label { color:#718096; width:42%; }
 .cost-table .ct-val { font-weight:600; color:#2d3748; text-align:right; }
 .attraction { display:flex; gap:12px; margin-bottom:14px; align-items:flex-start; }
 .attraction img { width:90px; height:65px; object-fit:cover; border-radius:6px; flex-shrink:0; background:#edf2f7; }
-.attraction-no-img { width:90px; height:65px; border-radius:6px; flex-shrink:0; background:#edf2f7; display:flex; align-items:center; justify-content:center; font-size:0.7rem; color:#a0aec0; }
+.attraction-no-img { width:90px; height:65px; border-radius:6px; flex-shrink:0; background:#edf2f7; display:flex; align-items:center; justify-content:center; font-size:0.7rem; color:#a0aec0; text-align:center; }
 .attraction-info h4 { font-size:0.88rem; font-weight:700; color:#2d3748; margin-bottom:3px; }
 .attraction-info p { font-size:0.8rem; color:#718096; line-height:1.5; }
 .pros-cons-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
-@media (max-width:520px) { .pros-cons-grid { grid-template-columns:1fr; } .attraction { flex-direction:column; } }
 .pros-box, .cons-box { border-radius:8px; padding:10px 12px; font-size:0.82rem; line-height:1.7; }
 .pros-box { background:#f0fff4; }
 .pros-box h4 { color:#276749; font-weight:700; margin-bottom:5px; }
 .cons-box { background:#fff5f5; }
 .cons-box h4 { color:#c53030; font-weight:700; margin-bottom:5px; }
 .pros-box li, .cons-box li { margin-left:14px; color:#4a5568; }
+@media (max-width:600px) {
+  .pros-cons-grid { grid-template-columns:1fr; }
+  .attraction { flex-direction:row; }
+  .attraction img, .attraction-no-img { width:72px; height:52px; }
+  #modal-overlay { padding:0; }
+  #modal-box { margin:0; border-radius:0; min-height:100vh; }
+  .cost-table { font-size:0.78rem; }
+  .cost-table td { padding:6px 8px; }
+  .cost-table .ct-val { font-size:0.78rem; }
+  #modal-box > div:last-child { padding:14px 16px; }
+}
 </style>
 
 <script>
@@ -271,10 +281,10 @@ const cityData = {
       ['총합 (5인)', '&#8361;1,135,944']
     ],
     attractions: [
-      { name: '칭다오 맥주박물관', desc: '1903년 창업 역사를 그대로 보존한 체험형 박물관. 현장 시음 포함. 약 2시간 소요.', img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/ba/Tsingtao_Brewery_Museum.jpg/600px-Tsingtao_Brewery_Museum.jpg' },
-      { name: '잔교 (栈桥)', desc: '칭다오의 상징. 1892년 건설된 460m 석조 부두. 회란각과 함께 사진 명소.', img: '' },
-      { name: '팔대관 (八大관)', desc: '독일·영국·일본 등 8개국 건축양식이 공존하는 유럽풍 주거 구역. 산책 코스 최고.', img: '' },
-      { name: '노산 (崂山)', desc: '칭다오 동쪽 해안 명산. 도교 사원과 폭포, 바다 조망을 한 번에. 케이블카 운행.', img: '' }
+      { name: '칭다오 맥주박물관', desc: '1903년 창업 역사를 그대로 보존한 체험형 박물관. 현장 시음 포함. 약 2시간 소요.', img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/ba/Tsingtao_Brewery_Museum.jpg/480px-Tsingtao_Brewery_Museum.jpg' },
+      { name: '잔교 (栈桥)', desc: '칭다오의 상징. 1892년 건설된 460m 석조 부두. 회란각과 함께 사진 명소.', img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/16/Zhanqiao_Pier%2C_Qingdao%2C_China.jpg/480px-Zhanqiao_Pier%2C_Qingdao%2C_China.jpg' },
+      { name: '팔대관 (八大관)', desc: '독일·영국·일본 등 8개국 건축양식이 공존하는 유럽풍 주거 구역. 산책 코스 최고.', img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3e/Badaguan_Qingdao.jpg/480px-Badaguan_Qingdao.jpg' },
+      { name: '노산 (崂山)', desc: '칭다오 동쪽 해안 명산. 도교 사원과 폭포, 바다 조망을 한 번에. 케이블카 운행.', img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/60/Mount_Lao_Qingdao.jpg/480px-Mount_Lao_Qingdao.jpg' }
     ],
     pros: ['5인 기준 총비용 1위 — 2위 옌타이보다도 7만원 저렴', '숙소 평점 8.6으로 6개 도시 중 최고', '칭다오 맥주 + 해산물 문화 — 성인 여행자 만족도 높음'],
     cons: ['중국어 장벽 — 영어 소통 어렵고 간판도 한자 중심', '귀국편 23:05 야간 출발 — 마지막 날 저녁까지 시간 조율 필요']
@@ -291,9 +301,9 @@ const cityData = {
       ['총합 (5인)', '&#8361;1,208,850']
     ],
     attractions: [
-      { name: '봉래각 (蓬莱阁)', desc: '2000년 역사의 도교 사원군. 중국 4대 명루 중 하나. 해무 낀 날 신선경 연출.', img: '' },
-      { name: '옌타이 해변 (烟台海滨)', desc: '조용하고 깨끗한 해수욕장. 성수기도 비교적 한산. 해산물 바베큐 노점 풍성.', img: '' },
-      { name: '장위 와이너리 (张裕酒文化博物馆)', desc: '1892년 창립 중국 최초 와이너리. 와인 시음 가능한 역사 박물관.', img: '' }
+      { name: '봉래각 (蓬莱阁)', desc: '2000년 역사의 도교 사원군. 중국 4대 명루 중 하나. 해무 낀 날 신선경 연출.', img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/42/Penglai_Pavilion.jpg/480px-Penglai_Pavilion.jpg' },
+      { name: '옌타이 해변 (烟台海滨)', desc: '조용하고 깨끗한 해수욕장. 성수기도 비교적 한산. 해산물 바베큐 노점 풍성.', img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6b/Yantai_beach.jpg/480px-Yantai_beach.jpg' },
+      { name: '장위 와이너리 (张裕酒文化博物馆)', desc: '1892년 창립 중국 최초 와이너리. 와인 시음 가능한 역사 박물관.', img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e3/Changyu_Pioneer_Wine_Yantai.jpg/480px-Changyu_Pioneer_Wine_Yantai.jpg' }
     ],
     pros: ['조용한 해변과 여유로운 분위기 — 관광객 적어 붐비지 않음', '중국 도시 중 가성비 2위 — 항공+숙박 모두 저렴', '이스타항공 직항으로 왕복 모두 낮 시간 비행'],
     cons: ['관광 인프라 칭다오보다 부족 — 한국어·영어 안내 거의 없음', '시내 중심까지 14.4km — 이동 불편, 택시/차량 필수']
@@ -314,10 +324,10 @@ Object.assign(cityData, {
       ['총합 (5인)', '&#8361;1,571,325 (기존 5위 &rarr; 3위 상승)']
     ],
     attractions: [
-      { name: '빅토리아 피크 (太平山)', desc: '홍콩 야경 조망 1번지. 트램 이용 권장. 해 질 무렵 방문이 최고.', img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/47/HK_Victoria_Harbour_Night.jpg/600px-HK_Victoria_Harbour_Night.jpg' },
-      { name: '침사추이 해변 산책로', desc: '구룡 반도에서 홍콩섬 야경을 정면으로. 심포니 오브 라이트 쇼 매일 저녁 8시.', img: '' },
-      { name: '딤섬 & 얌차 문화', desc: '진짜 광둥 딤섬. 팀호완(Tim Ho Wan) 등 현지 맛집은 줄 서서 먹는 보람이 있음.', img: '' },
-      { name: '몽콕 야시장 (旺角)', desc: '쇼핑과 길거리 음식의 밀도가 세계 최고 수준. 여인가·금붕어가 독특한 볼거리.', img: '' }
+      { name: '빅토리아 피크 (太平山)', desc: '홍콩 야경 조망 1번지. 트램 이용 권장. 해 질 무렵 방문이 최고.', img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/47/HK_Victoria_Harbour_Night.jpg/480px-HK_Victoria_Harbour_Night.jpg' },
+      { name: '침사추이 해변 산책로', desc: '구룡 반도에서 홍콩섬 야경을 정면으로. 심포니 오브 라이트 쇼 매일 저녁 8시.', img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/44/Tsim_Sha_Tsui_Promenade_Night.jpg/480px-Tsim_Sha_Tsui_Promenade_Night.jpg' },
+      { name: '딤섬 & 얌차 문화', desc: '진짜 광둥 딤섬. 팀호완(Tim Ho Wan) 등 현지 맛집은 줄 서서 먹는 보람이 있음.', img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/57/Dim_sum_at_Maxim%27s_Palace.jpg/480px-Dim_sum_at_Maxim%27s_Palace.jpg' },
+      { name: '몽콕 야시장 (旺角)', desc: '쇼핑과 길거리 음식의 밀도가 세계 최고 수준. 여인가·금붕어가 독특한 볼거리.', img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6b/Mong_Kok_at_night.jpg/480px-Mong_Kok_at_night.jpg' }
     ],
     pros: ['새 항공 조건 적용 후 기존 5위에서 3위로 대폭 상승', '홍콩익스프레스 직항으로 출발 06:40 — 현지에서 충분히 활용 가능', '딤섬·쇼핑·야경 밀도가 6개 도시 중 최고 수준'],
     cons: ['숙소 평점 5.2 — 6개 도시 최저, 가성비 숙박 찾기 어려움', '귀국 21:00 출발로 마지막 날 저녁 공항 이동 필요', '복잡하고 빠른 도시 — 어린아이 동반 시 체력 소모 클 수 있음']
@@ -335,10 +345,10 @@ Object.assign(cityData, {
       ['주의', '귀국편 고베(UKB) 출발 — 오사카에서 고베까지 약 40분 이동 필요']
     ],
     attractions: [
-      { name: '오사카성 (大阪城)', desc: '16세기 도요토미 히데요시 시대 건축. 천수각 전망대에서 오사카 전경 조망.', img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/55/Osaka_Castle_08bs3200.jpg/600px-Osaka_Castle_08bs3200.jpg' },
-      { name: '도톤보리 (道頓堀)', desc: '오사카 먹방 1번지. 글리코 간판 앞 사진은 필수. 타코야키·라멘·오코노미야키 집결지.', img: '' },
-      { name: '유니버설 스튜디오 재팬 (USJ)', desc: '아이들이 가장 좋아하는 코스. 1일 패스 구매 필수. 해리포터 구역 인기.', img: '' },
-      { name: '신사이바시 (心斎橋)', desc: '오사카 최대 쇼핑 거리. 명품부터 드러그스토어까지. 약 600m 아케이드.', img: '' }
+      { name: '오사카성 (大阪城)', desc: '16세기 도요토미 히데요시 시대 건축. 천수각 전망대에서 오사카 전경 조망.', img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/55/Osaka_Castle_08bs3200.jpg/480px-Osaka_Castle_08bs3200.jpg' },
+      { name: '도톤보리 (道頓堀)', desc: '오사카 먹방 1번지. 글리코 간판 앞 사진은 필수. 타코야키·라멘·오코노미야키 집결지.', img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/13/Dotonbori_Osaka_2012.jpg/480px-Dotonbori_Osaka_2012.jpg' },
+      { name: '유니버설 스튜디오 재팬 (USJ)', desc: '아이들이 가장 좋아하는 코스. 1일 패스 구매 필수. 해리포터 구역 인기.', img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c7/Universal_Studios_Japan_Globe.jpg/480px-Universal_Studios_Japan_Globe.jpg' },
+      { name: '신사이바시 (心斎橋)', desc: '오사카 최대 쇼핑 거리. 명품부터 드러그스토어까지. 약 600m 아케이드.', img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a3/Shinsaibashi_Osaka_2013.jpg/480px-Shinsaibashi_Osaka_2013.jpg' }
     ],
     pros: ['아이와 함께라면 USJ — 가족 만족도 최고', '도톤보리 먹방 문화 — 식비 대비 만족도 압도적', '한국어 안내·한국인 대응 식당 많아 언어 장벽 낮음'],
     cons: ['10월 연휴 시즌이라 관광객 많음 — 인기 맛집 대기 1시간 이상', '귀국 고베(UKB) 출발 — 오사카 도심에서 이동 시간·비용 추가', '숙박 평점 7.9이지만 중심에서 6.8km — 교통비 감안 필요']
@@ -360,10 +370,10 @@ Object.assign(cityData, {
       ['참고', '출발 김포(GMP)/도착 쑹산(TSA), 귀국 타오위엔(TPE) — 공항 다름 주의']
     ],
     attractions: [
-      { name: '타이베이 101', desc: '508m 초고층 빌딩. 89층 전망대에서 타이베이 전경 조망. 야경이 특히 장관.', img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e4/Taipei101.shot.at.night.jpg/400px-Taipei101.shot.at.night.jpg' },
-      { name: '스린 야시장 (士林夜市)', desc: '대만 최대 야시장. 굴전·지파이·망고빙수 필수 코스. 저녁 6시 이후 본격 운영.', img: '' },
-      { name: '국립고궁박물원 (故宮)', desc: '세계 4대 박물관 중 하나. 7만여 점 중국 문물 소장. 취옥배추와 육형석 필수 관람.', img: '' },
-      { name: 'MRT 교통 편리성', desc: '타이베이 지하철은 정시 운행, 저렴, 쾌적. 관광지 대부분 역 도보 10분 이내.', img: '' }
+      { name: '타이베이 101', desc: '508m 초고층 빌딩. 89층 전망대에서 타이베이 전경 조망. 야경이 특히 장관.', img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e4/Taipei101.shot.at.night.jpg/320px-Taipei101.shot.at.night.jpg' },
+      { name: '스린 야시장 (士林夜市)', desc: '대만 최대 야시장. 굴전·지파이·망고빙수 필수 코스. 저녁 6시 이후 본격 운영.', img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9c/Shilin_Night_Market_Taiwan.jpg/480px-Shilin_Night_Market_Taiwan.jpg' },
+      { name: '국립고궁박물원 (故宮)', desc: '세계 4대 박물관 중 하나. 7만여 점 중국 문물 소장. 취옥배추와 육형석 필수 관람.', img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/ab/National_Palace_Museum_Taiwan.jpg/480px-National_Palace_Museum_Taiwan.jpg' },
+      { name: 'MRT 교통 편리성', desc: '타이베이 지하철은 정시 운행, 저렴, 쾌적. 관광지 대부분 역 도보 10분 이내.', img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/56/Taipei_MRT_train.jpg/480px-Taipei_MRT_train.jpg' }
     ],
     pros: ['MRT 교통망 세계 최고 수준 — 이동 걱정 없음', '야시장 문화 — 어린이도 즐기는 길거리 음식 천국', '대만인 친절도 높음 — 한국인 관광객 익숙해 소통 원활'],
     cons: ['항공+숙박 합산 5위 — 가성비 아쉬운 편', '숙소 평점 6.3 — 5개 도시 중 홍콩 다음으로 낮음', '출발/도착 공항이 달라 이동 계획 사전 확인 필요']
@@ -381,10 +391,10 @@ Object.assign(cityData, {
       ['참고', '10월 10일 출국편 전체 노선에서 12:00 이전 출발 편 없음 — 17:00 최이른 편']
     ],
     attractions: [
-      { name: '후쿠오카 야타이 (屋台)', desc: '하카타역·텐진 강변 야외 포장마차. 라멘·모츠나베·오뎅. 저녁 6시~심야 운영.', img: '' },
-      { name: '다자이후 텐만구 (太宰府天満宮)', desc: '학문의 신 모시는 1100년 역사 신사. 우메가에모치(떡) 맛집 거리도 볼거리.', img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c9/Dazaifu_Tenmangu.jpg/600px-Dazaifu_Tenmangu.jpg' },
-      { name: '캐널시티 하카타 (Canal City)', desc: '운하를 품은 복합 쇼핑몰. 분수쇼 매시간 진행. 식당·영화관·상점 모두 집결.', img: '' },
-      { name: '후쿠오카 공항 접근성', desc: '하카타역에서 지하철 2정거장(5분), 텐진에서 11분. 공항 접근성 세계 최고 수준.', img: '' }
+      { name: '후쿠오카 야타이 (屋台)', desc: '하카타역·텐진 강변 야외 포장마차. 라멘·모츠나베·오뎅. 저녁 6시~심야 운영.', img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2f/Fukuoka_Yatai.jpg/480px-Fukuoka_Yatai.jpg' },
+      { name: '다자이후 텐만구 (太宰府天満宮)', desc: '학문의 신 모시는 1100년 역사 신사. 우메가에모치(떡) 맛집 거리도 볼거리.', img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c9/Dazaifu_Tenmangu.jpg/480px-Dazaifu_Tenmangu.jpg' },
+      { name: '캐널시티 하카타 (Canal City)', desc: '운하를 품은 복합 쇼핑몰. 분수쇼 매시간 진행. 식당·영화관·상점 모두 집결.', img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/34/Canal_City_Hakata.jpg/480px-Canal_City_Hakata.jpg' },
+      { name: '하카타 라멘', desc: '진한 돼지뼈 육수의 하카타 라멘 본고장. 이치란·잇푸도 본점이 모두 후쿠오카. 가성비 최고.', img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/0e/Hakata_ramen_by_Presto.jpg/480px-Hakata_ramen_by_Presto.jpg' }
     ],
     pros: ['라멘+모츠나베 — 일본 먹방 중에서도 후쿠오카가 특히 강함', '공항에서 시내까지 5분 — 이동 스트레스 제로', '야타이 문화 — 현지 분위기 가장 진하게 느낄 수 있는 도시'],
     cons: ['6개 도시 중 총비용 최고가 — 특히 숙박 &#8361;411,973으로 2위 대비 2배 이상', '출국편 12시 이전 없음 — 10일 오전을 사실상 서울에서 보내야 함', '성수기 야타이는 줄이 길고 단체 예약 어려운 경우 있음']
