@@ -11,10 +11,11 @@ header { background: #1a365d; color: #fff; padding: 28px 24px 20px; text-align: 
 header h1 { font-size: 1.5rem; font-weight: 700; margin-bottom: 8px; }
 header .sub { font-size: 0.9rem; opacity: 0.85; }
 .badge { display: inline-block; background: #2b6cb0; border-radius: 4px; padding: 2px 10px; font-size: 0.8rem; margin: 4px 3px; }
-.container { max-width: 900px; margin: 0 auto; padding: 20px 16px 40px; }
+.container { max-width: 940px; margin: 0 auto; padding: 20px 16px 40px; }
 .section-title { font-size: 1.05rem; font-weight: 700; color: #2d3748; margin: 28px 0 12px; border-left: 4px solid #3182ce; padding-left: 10px; }
-.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
-.card { background: #fff; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); overflow: hidden; }
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
+.card { background: #fff; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); overflow: hidden; cursor: pointer; transition: transform 0.15s, box-shadow 0.15s; }
+.card:hover { transform: translateY(-3px); box-shadow: 0 6px 20px rgba(0,0,0,0.13); }
 .card-header { padding: 14px 16px 10px; display: flex; justify-content: space-between; align-items: flex-start; }
 .card-city { font-size: 1.15rem; font-weight: 700; }
 .card-rank { width: 28px; height: 28px; border-radius: 50%; font-weight: 700; font-size: 0.85rem; display: flex; align-items: center; justify-content: center; color: #fff; flex-shrink: 0; }
@@ -29,13 +30,161 @@ header .sub { font-size: 0.9rem; opacity: 0.85; }
 .card-body .row:first-child { border-top: none; margin-top: 0; padding-top: 0; }
 .label { color: #718096; }
 .val { font-weight: 600; color: #2d3748; }
+.flight-block { background: #f7fafc; border-radius: 6px; padding: 8px 10px; margin: 8px 0 4px; font-size: 0.8rem; line-height: 1.6; }
+.flight-block .fl-row { display: flex; align-items: flex-start; gap: 6px; }
+.fl-label { color: #718096; min-width: 28px; font-size: 0.75rem; padding-top: 1px; }
+.fl-val { color: #2d3748; font-weight: 600; }
 .tag { display: inline-block; background: #ebf8ff; color: #2b6cb0; border-radius: 3px; padding: 1px 6px; font-size: 0.75rem; margin-top: 4px; }
 .tag-green { background: #f0fff4; color: #276749; }
 .tag-orange { background: #fffaf0; color: #c05621; }
+.tag-red { background: #fff5f5; color: #c53030; }
 .btn-links { display: flex; gap: 6px; padding: 0 16px 14px; }
 .btn-link { flex: 1; text-align: center; padding: 6px 4px; border-radius: 5px; font-size: 0.78rem; font-weight: 600; text-decoration: none; }
 .btn-sky { background: #ebf8ff; color: #2b6cb0; }
 .btn-book { background: #f0fff4; color: #276749; }
+</style>
+</head>
+<body>
+<header>
+  <h1>가족여행 도시별 비용 비교</h1>
+  <div class="sub">서울 출발 &rarr; 2026년 10월 10일(토) &ndash; 12일(월) | 2박 3일</div>
+  <div style="margin-top:10px;">
+    <span class="badge">성인 5명</span>
+    <span class="badge">이코노미</span>
+    <span class="badge">2룸 기준</span>
+    <span class="badge">출국 12:00 이전</span>
+    <span class="badge">귀국 14:00 이후</span>
+  </div>
+</header>
+<div class="container">
+
+<div class="section-title">총 비용 순위 (항공 5인 + 숙박 2룸 2박) - 카드 클릭시 상세 정보</div>
+<div class="cards">
+
+<div class="card" onclick="openModal('qingdao')">
+  <div class="card-header"><div class="card-city">청다오 (중국)</div><div class="card-rank rank-1">1</div></div>
+  <div class="card-total">&#8361;1,135,944 <span>5인 총합</span></div>
+  <div class="card-body">
+    <div class="flight-block">
+      <div class="fl-row"><span class="fl-label">출국</span><span class="fl-val">진에어 ICN&#8594;TAO 07:15&#8594;07:55 직항</span></div>
+      <div class="fl-row"><span class="fl-label">귀국</span><span class="fl-val">제주항공 TAO&#8594;ICN 23:05&#8594;01:40+1 직항</span></div>
+    </div>
+    <div class="row"><span class="label">항공 (5인)</span><span class="val">&#8361;1,016,500</span></div>
+    <div class="row"><span class="label">1인 항공</span><span class="val">&#8361;203,300</span></div>
+    <div class="row"><span class="label">숙박 (2룸 2박)</span><span class="val">&#8361;119,444</span></div>
+    <div class="row"><span class="label">숙소 / 평점</span><span class="val">Jiumi Hutong / 8.6</span></div>
+    <div><span class="tag tag-green">가장 저렴</span> <span class="tag">숙소 평점 최고</span></div>
+  </div>
+  <div class="btn-links">
+    <a class="btn-link btn-sky" href="https://www.skyscanner.co.kr/transport/flights/sela/tao/261010/261012/?adultsv2=5&cabinclass=economy&childrenv2=&rtn=1" target="_blank" onclick="event.stopPropagation()">스카이스캐너</a>
+    <a class="btn-link btn-book" href="https://www.booking.com/searchresults.ko.html?ss=qingdao&checkin=2026-10-10&checkout=2026-10-12&group_adults=5&no_rooms=2" target="_blank" onclick="event.stopPropagation()">부킹닷컴</a>
+  </div>
+</div>
+
+<div class="card" onclick="openModal('yantai')">
+  <div class="card-header"><div class="card-city">옌타이 (중국)</div><div class="card-rank rank-2">2</div></div>
+  <div class="card-total">&#8361;1,208,850 <span>5인 총합</span></div>
+  <div class="card-body">
+    <div class="flight-block">
+      <div class="fl-row"><span class="fl-label">출국</span><span class="fl-val">이스타 ICN&#8594;YNT 08:55&#8594;09:25 직항</span></div>
+      <div class="fl-row"><span class="fl-label">귀국</span><span class="fl-val">이스타 YNT&#8594;ICN 16:00&#8594;18:30 직항</span></div>
+    </div>
+    <div class="row"><span class="label">항공 (5인)</span><span class="val">&#8361;1,037,000</span></div>
+    <div class="row"><span class="label">1인 항공</span><span class="val">&#8361;207,400</span></div>
+    <div class="row"><span class="label">숙박 (2룸 2박)</span><span class="val">&#8361;171,850</span></div>
+    <div class="row"><span class="label">숙소 / 평점</span><span class="val">7Days Inn / 8.0</span></div>
+    <div><span class="tag">숙소 평점 우수</span> <span class="tag tag-green">중국 2위</span></div>
+  </div>
+  <div class="btn-links">
+    <a class="btn-link btn-sky" href="https://www.skyscanner.co.kr/transport/flights/sela/cynt/261010/261012/?adultsv2=5&cabinclass=economy&childrenv2=&rtn=1" target="_blank" onclick="event.stopPropagation()">스카이스캐너</a>
+    <a class="btn-link btn-book" href="https://www.booking.com/searchresults.ko.html?ss=yantai&checkin=2026-10-10&checkout=2026-10-12&group_adults=5&no_rooms=2" target="_blank" onclick="event.stopPropagation()">부킹닷컴</a>
+  </div>
+</div>
+
+<div class="card" onclick="openModal('hongkong')">
+  <div class="card-header"><div class="card-city">홍콩</div><div class="card-rank rank-3">3</div></div>
+  <div class="card-total">&#8361;1,571,325 <span>5인 총합</span></div>
+  <div class="card-body">
+    <div class="flight-block">
+      <div class="fl-row"><span class="fl-label">출국</span><span class="fl-val">홍콩익스프레스 ICN&#8594;HKG 06:40&#8594;09:30 직항</span></div>
+      <div class="fl-row"><span class="fl-label">귀국</span><span class="fl-val">홍콩익스프레스 HKG&#8594;ICN 21:00&#8594;01:40+1 직항</span></div>
+    </div>
+    <div class="row"><span class="label">항공 (5인)</span><span class="val">&#8361;1,358,000</span></div>
+    <div class="row"><span class="label">1인 항공</span><span class="val">&#8361;271,600</span></div>
+    <div class="row"><span class="label">숙박 (2룸 2박)</span><span class="val">&#8361;213,325</span></div>
+    <div class="row"><span class="label">숙소 / 평점</span><span class="val">Dhillon Hostel / 5.2</span></div>
+    <div><span class="tag tag-orange">순위 대폭 상승</span> <span class="tag tag-red">숙소 평점 최저</span></div>
+  </div>
+  <div class="btn-links">
+    <a class="btn-link btn-sky" href="https://www.skyscanner.co.kr/transport/flights/sela/hkg/261010/261012/?adultsv2=5&cabinclass=economy&childrenv2=&rtn=1" target="_blank" onclick="event.stopPropagation()">스카이스캐너</a>
+    <a class="btn-link btn-book" href="https://www.booking.com/searchresults.ko.html?ss=hong+kong&checkin=2026-10-10&checkout=2026-10-12&group_adults=5&no_rooms=2" target="_blank" onclick="event.stopPropagation()">부킹닷컴</a>
+  </div>
+</div>
+
+<div class="card" onclick="openModal('osaka')">
+  <div class="card-header"><div class="card-city">오사카 (일본)</div><div class="card-rank rank-4">4</div></div>
+  <div class="card-total">&#8361;1,921,412 <span>5인 총합</span></div>
+  <div class="card-body">
+    <div class="flight-block">
+      <div class="fl-row"><span class="fl-label">출국</span><span class="fl-val">제주항공 ICN&#8594;KIX 07:10&#8594;09:05 직항</span></div>
+      <div class="fl-row"><span class="fl-label">귀국</span><span class="fl-val">제주항공 UKB&#8594;ICN 16:00&#8594;18:00 직항 (고베 출발)</span></div>
+    </div>
+    <div class="row"><span class="label">항공 (5인)</span><span class="val">&#8361;1,775,500</span></div>
+    <div class="row"><span class="label">1인 항공</span><span class="val">&#8361;355,100</span></div>
+    <div class="row"><span class="label">숙박 (2룸 2박)</span><span class="val">&#8361;145,912</span></div>
+    <div class="row"><span class="label">숙소 / 평점</span><span class="val">Reifa 動物園前 / 7.9</span></div>
+    <div><span class="tag tag-orange">일본 중 최저가</span> <span class="tag">귀국 고베(UKB) 주의</span></div>
+  </div>
+  <div class="btn-links">
+    <a class="btn-link btn-sky" href="https://www.skyscanner.co.kr/transport/flights/sela/osaa/261010/261012/?adultsv2=5&cabinclass=economy&childrenv2=&rtn=1" target="_blank" onclick="event.stopPropagation()">스카이스캐너</a>
+    <a class="btn-link btn-book" href="https://www.booking.com/searchresults.ko.html?ss=osaka&checkin=2026-10-10&checkout=2026-10-12&group_adults=5&no_rooms=2" target="_blank" onclick="event.stopPropagation()">부킹닷컴</a>
+  </div>
+</div>
+
+<div class="card" onclick="openModal('taipei')">
+  <div class="card-header"><div class="card-city">타이베이 (대만)</div><div class="card-rank rank-5">5</div></div>
+  <div class="card-total">&#8361;1,993,128 <span>5인 총합</span></div>
+  <div class="card-body">
+    <div class="flight-block">
+      <div class="fl-row"><span class="fl-label">출국</span><span class="fl-val">이스타항공 GMP&#8594;TSA 11:15&#8594;12:55 직항 (김포)</span></div>
+      <div class="fl-row"><span class="fl-label">귀국</span><span class="fl-val">스쿠트 TPE&#8594;ICN 18:10&#8594;21:45 직항</span></div>
+    </div>
+    <div class="row"><span class="label">항공 (5인)</span><span class="val">&#8361;1,710,026</span></div>
+    <div class="row"><span class="label">1인 항공</span><span class="val">&#8361;342,006</span></div>
+    <div class="row"><span class="label">숙박 (2룸 2박)</span><span class="val">&#8361;283,102</span></div>
+    <div class="row"><span class="label">숙소 / 평점</span><span class="val">Ku Shan Yuan Hotel / 6.3</span></div>
+    <div><span class="tag">야시장 문화</span> <span class="tag">출국 김포 GMP</span></div>
+  </div>
+  <div class="btn-links">
+    <a class="btn-link btn-sky" href="https://www.skyscanner.co.kr/transport/flights/sela/tpet/261010/261012/?adultsv2=5&cabinclass=economy&childrenv2=&rtn=1" target="_blank" onclick="event.stopPropagation()">스카이스캐너</a>
+    <a class="btn-link btn-book" href="https://www.booking.com/searchresults.ko.html?ss=taipei&checkin=2026-10-10&checkout=2026-10-12&group_adults=5&no_rooms=2" target="_blank" onclick="event.stopPropagation()">부킹닷컴</a>
+  </div>
+</div>
+
+<div class="card" onclick="openModal('fukuoka')">
+  <div class="card-header"><div class="card-city">후쿠오카 (일본)</div><div class="card-rank rank-6">6</div></div>
+  <div class="card-total">&#8361;2,164,473 <span>5인 총합</span></div>
+  <div class="card-body">
+    <div class="flight-block">
+      <div class="fl-row"><span class="fl-label">출국</span><span class="fl-val">진에어 ICN&#8594;FUK 17:00&#8594;18:30 직항 (조건 근사치)</span></div>
+      <div class="fl-row"><span class="fl-label">귀국</span><span class="fl-val">진에어 FUK&#8594;ICN 19:40&#8594;21:00 직항</span></div>
+    </div>
+    <div class="row"><span class="label">항공 (5인)</span><span class="val">&#8361;1,752,500</span></div>
+    <div class="row"><span class="label">1인 항공</span><span class="val">&#8361;350,500</span></div>
+    <div class="row"><span class="label">숙박 (2룸 2박)</span><span class="val">&#8361;411,973</span></div>
+    <div class="row"><span class="label">숙소 / 평점</span><span class="val">竹下 inn Near Airport / 7.2</span></div>
+    <div><span class="tag tag-red">출국 12시 이전 편 없음</span> <span class="tag tag-orange">숙박 최고가</span></div>
+  </div>
+  <div class="btn-links">
+    <a class="btn-link btn-sky" href="https://www.skyscanner.co.kr/transport/flights/sela/fuk/261010/261012/?adultsv2=5&cabinclass=economy&childrenv2=&rtn=1" target="_blank" onclick="event.stopPropagation()">스카이스캐너</a>
+    <a class="btn-link btn-book" href="https://www.booking.com/searchresults.ko.html?ss=fukuoka&checkin=2026-10-10&checkout=2026-10-12&group_adults=5&no_rooms=2" target="_blank" onclick="event.stopPropagation()">부킹닷컴</a>
+  </div>
+</div>
+
+</div><!-- end .cards -->
+
+<div class="section-title">상세 비교 (항공 + 숙박 분리)</div>
+<style>
 table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.07); font-size: 0.85rem; }
 th { background: #2d3748; color: #fff; padding: 10px 12px; text-align: left; font-weight: 600; }
 td { padding: 9px 12px; border-bottom: 1px solid #edf2f7; vertical-align: middle; }
@@ -43,46 +192,259 @@ tr:last-child td { border-bottom: none; }
 tr:hover td { background: #f7fafc; }
 .best { color: #276749; font-weight: 700; }
 .total-col { font-weight: 700; color: #1a365d; }
-.elim { background: #fff; border-radius: 8px; padding: 14px 18px; font-size: 0.83rem; color: #4a5568; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
-.elim p { margin-bottom: 6px; }
-.elim span { color: #2d3748; font-weight: 600; }
 </style>
-</head>
-<body>
-<header>
-  <h1>가족여행 도시별 비용 비교</h1>
-  <div class="sub">서울 출발 → 2026년 10월 10일(토) – 12일(월) | 2박 3일</div>
-  <div style="margin-top:10px;">
-    <span class="badge">성인 5명</span><span class="badge">이코노미</span><span class="badge">2룸 기준</span><span class="badge">김포/인천 출발</span>
+<table>
+  <thead>
+    <tr><th>순위</th><th>도시</th><th>항공(1인)</th><th>항공(5인)</th><th>숙박(2룸2박)</th><th>총합(5인)</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>1</td><td><strong>청다오</strong></td><td class="best">&#8361;203,300</td><td>&#8361;1,016,500</td><td>&#8361;119,444</td><td class="total-col best">&#8361;1,135,944</td></tr>
+    <tr><td>2</td><td><strong>옌타이</strong></td><td>&#8361;207,400</td><td>&#8361;1,037,000</td><td>&#8361;171,850</td><td class="total-col">&#8361;1,208,850</td></tr>
+    <tr><td>3</td><td><strong>홍콩</strong></td><td>&#8361;271,600</td><td>&#8361;1,358,000</td><td>&#8361;213,325</td><td class="total-col">&#8361;1,571,325</td></tr>
+    <tr><td>4</td><td><strong>오사카</strong></td><td>&#8361;355,100</td><td>&#8361;1,775,500</td><td>&#8361;145,912</td><td class="total-col">&#8361;1,921,412</td></tr>
+    <tr><td>5</td><td><strong>타이베이</strong></td><td>&#8361;342,006</td><td>&#8361;1,710,026</td><td>&#8361;283,102</td><td class="total-col">&#8361;1,993,128</td></tr>
+    <tr><td>6</td><td><strong>후쿠오카</strong></td><td>&#8361;350,500</td><td>&#8361;1,752,500</td><td>&#8361;411,973</td><td class="total-col">&#8361;2,164,473</td></tr>
+  </tbody>
+</table>
+
+<div style="margin-top:20px; font-size:0.8rem; color:#718096; line-height:1.8; background:#fff; border-radius:8px; padding:14px 18px; box-shadow:0 1px 4px rgba(0,0,0,0.06);">
+  <strong style="color:#2d3748;">조회 기준 안내</strong><br>
+  조회일: 2026년 9월 23일 / 출발: 서울 전체 공항 (김포+인천) / 성인 5명 이코노미 왕복<br>
+  항공 조건: 출국 정오(12:00) 이전 출발 / 귀국 14:00 이후 출발 (후쿠오카 출국편 해당 편 없어 근사치 적용)<br>
+  숙박: Booking.com 가격순 도미토리 제외 2룸 가족 가능 최저가 (세금 포함) — 기존 데이터 유지<br>
+  * 실제 예약 시 가격 변동이 있을 수 있습니다. 카드를 클릭하면 상세 정보 및 관광지 정보를 확인할 수 있습니다.
+</div>
+
+</div><!-- end .container -->
+
+<!-- MODAL OVERLAY -->
+<div id="modal-overlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:1000; overflow-y:auto; padding:20px;" onclick="closeModal(event)">
+<div id="modal-box" style="background:#fff; max-width:680px; margin:0 auto; border-radius:12px; overflow:hidden; position:relative;">
+  <button onclick="document.getElementById('modal-overlay').style.display='none'" style="position:absolute; top:14px; right:16px; background:none; border:none; font-size:1.5rem; cursor:pointer; color:#4a5568; z-index:10;">&times;</button>
+  <div id="modal-header" style="background:#1a365d; color:#fff; padding:20px 24px 14px;">
+    <div id="modal-city" style="font-size:1.3rem; font-weight:800;"></div>
+    <div id="modal-total" style="font-size:1rem; opacity:0.85; margin-top:4px;"></div>
   </div>
-</header>
-<div class="container">
-<div class="section-title">총 비용 순위 (항공 5인 + 숙박 2룸 2박)</div>
-<div class="cards">
-<div class="card"><div class="card-header"><div class="card-city">청다오 (중국)</div><div class="card-rank rank-1">1</div></div><div class="card-total">₩967,444 <span>5인 총합</span></div><div class="card-body"><div class="row"><span class="label">항공 (5인)</span><span class="val">₩848,000</span></div><div class="row"><span class="label">1인 항공</span><span class="val">₩169,600</span></div><div class="row"><span class="label">항공사/노선</span><span class="val">JinAir 직항</span></div><div class="row"><span class="label">출발</span><span class="val">23:30 (야간)</span></div><div class="row"><span class="label">숙박 (2룸 2박)</span><span class="val">₩119,444</span></div><div class="row"><span class="label">숙소</span><span class="val">Jiumi Hutong Homestay</span></div><div class="row"><span class="label">평점 / 거리</span><span class="val">8.6 / 중심 5.1km</span></div><div><span class="tag tag-green">가장 저렴</span><span class="tag">숙소 평점 최고</span></div></div><div class="btn-links"><a class="btn-link btn-sky" href="https://www.skyscanner.co.kr/transport/flights/sela/tao/261010/261012/?adultsv2=5&cabinclass=economy&childrenv2=&rtn=1" target="_blank">스카이스캐너</a><a class="btn-link btn-book" href="https://www.booking.com/searchresults.ko.html?ss=qingdao&checkin=2026-10-10&checkout=2026-10-12&group_adults=5&no_rooms=2&group_children=0&order=price" target="_blank">부킹닷컴</a></div></div>
-<div class="card"><div class="card-header"><div class="card-city">옌타이 (중국)</div><div class="card-rank rank-2">2</div></div><div class="card-total">₩1,188,350 <span>5인 총합</span></div><div class="card-body"><div class="row"><span class="label">항공 (5인)</span><span class="val">₩1,016,500</span></div><div class="row"><span class="label">1인 항공</span><span class="val">₩203,300</span></div><div class="row"><span class="label">항공사/노선</span><span class="val">JinAir+Eastar 직항</span></div><div class="row"><span class="label">숙박 (2룸 2박)</span><span class="val">₩171,850</span></div><div class="row"><span class="label">숙소</span><span class="val">7Days Inn Dev Zone Beach</span></div><div class="row"><span class="label">평점 / 거리</span><span class="val">8.0 / 중심 14.4km</span></div><div><span class="tag">숙소 평점 우수</span></div></div><div class="btn-links"><a class="btn-link btn-sky" href="https://www.skyscanner.co.kr/transport/flights/sela/ynt/261010/261012/?adultsv2=5&cabinclass=economy&childrenv2=&rtn=1" target="_blank">스카이스캐너</a><a class="btn-link btn-book" href="https://www.booking.com/searchresults.ko.html?ss=yantai&checkin=2026-10-10&checkout=2026-10-12&group_adults=5&no_rooms=2&group_children=0&order=price" target="_blank">부킹닷컴</a></div></div>
-<div class="card"><div class="card-header"><div class="card-city">오사카 (일본)</div><div class="card-rank rank-3">3</div></div><div class="card-total">₩1,991,612 <span>5인 총합</span></div><div class="card-body"><div class="row"><span class="label">항공 (5인)</span><span class="val">₩1,845,700</span></div><div class="row"><span class="label">1인 항공</span><span class="val">₩369,140</span></div><div class="row"><span class="label">항공사/노선</span><span class="val">JejuAir 직항 (고베 UKB)</span></div><div class="row"><span class="label">숙박 (2룸 2박)</span><span class="val">₩145,912</span></div><div class="row"><span class="label">숙소</span><span class="val">Reifa宿泊 動物園前2</span></div><div class="row"><span class="label">평점 / 거리</span><span class="val">7.9 / 중심 6.8km</span></div><div><span class="tag tag-orange">일본 중 최저가</span></div></div><div class="btn-links"><a class="btn-link btn-sky" href="https://www.skyscanner.co.kr/transport/flights/sela/ukb/261010/261012/?adultsv2=5&cabinclass=economy&childrenv2=&rtn=1" target="_blank">스카이스캐너</a><a class="btn-link btn-book" href="https://www.booking.com/searchresults.ko.html?ss=osaka&checkin=2026-10-10&checkout=2026-10-12&group_adults=5&no_rooms=2&group_children=0&order=price" target="_blank">부킹닷컴</a></div></div>
-<div class="card"><div class="card-header"><div class="card-city">타이베이 (대만)</div><div class="card-rank rank-4">4</div></div><div class="card-total">₩1,993,128 <span>5인 총합</span></div><div class="card-body"><div class="row"><span class="label">항공 (5인)</span><span class="val">₩1,710,026</span></div><div class="row"><span class="label">1인 항공</span><span class="val">₩342,006</span></div><div class="row"><span class="label">항공사/노선</span><span class="val">Eastar+Scoot 직항 (김포)</span></div><div class="row"><span class="label">숙박 (2룸 2박)</span><span class="val">₩283,102</span></div><div class="row"><span class="label">숙소</span><span class="val">Ku Shan Yuan Hotel</span></div><div class="row"><span class="label">평점 / 거리</span><span class="val">6.3 / 중심 2.2km</span></div><div><span class="tag">고정 추천 도시</span></div></div><div class="btn-links"><a class="btn-link btn-sky" href="https://www.skyscanner.co.kr/transport/flights/sela/tpe/261010/261012/?adultsv2=5&cabinclass=economy&childrenv2=&rtn=1" target="_blank">스카이스캐너</a><a class="btn-link btn-book" href="https://www.booking.com/searchresults.ko.html?ss=taipei&checkin=2026-10-10&checkout=2026-10-12&group_adults=5&no_rooms=2&group_children=0&order=price" target="_blank">부킹닷컴</a></div></div>
-<div class="card"><div class="card-header"><div class="card-city">홍콩</div><div class="card-rank rank-5">5</div></div><div class="card-total">₩2,051,825 <span>5인 총합</span></div><div class="card-body"><div class="row"><span class="label">항공 (5인)</span><span class="val">₩1,838,500</span></div><div class="row"><span class="label">1인 항공</span><span class="val">₩367,700</span></div><div class="row"><span class="label">항공사/노선</span><span class="val">JejuAir 직항</span></div><div class="row"><span class="label">숙박 (2룸 2박)</span><span class="val">₩213,325</span></div><div class="row"><span class="label">숙소</span><span class="val">Dhillon Hostel (침사추이)</span></div><div class="row"><span class="label">평점 / 거리</span><span class="val">5.2 / 중심 2.1km</span></div><div><span class="tag">고정 추천 도시</span></div></div><div class="btn-links"><a class="btn-link btn-sky" href="https://www.skyscanner.co.kr/transport/flights/sela/hkg/261010/261012/?adultsv2=5&cabinclass=economy&childrenv2=&rtn=1" target="_blank">스카이스캐너</a><a class="btn-link btn-book" href="https://www.booking.com/searchresults.ko.html?ss=hong+kong&checkin=2026-10-10&checkout=2026-10-12&group_adults=5&no_rooms=2&group_children=0&order=price" target="_blank">부킹닷컴</a></div></div>
-<div class="card"><div class="card-header"><div class="card-city">후쿠오카 (일본)</div><div class="card-rank rank-6">6</div></div><div class="card-total">₩2,277,973 <span>5인 총합</span></div><div class="card-body"><div class="row"><span class="label">항공 (5인)</span><span class="val">₩1,866,000</span></div><div class="row"><span class="label">1인 항공</span><span class="val">₩373,200</span></div><div class="row"><span class="label">항공사/노선</span><span class="val">JinAir 직항</span></div><div class="row"><span class="label">숙박 (2룸 2박)</span><span class="val">₩411,973</span></div><div class="row"><span class="label">숙소</span><span class="val">竹下 inn Near the Airport</span></div><div class="row"><span class="label">평점 / 거리</span><span class="val">7.2 / 중심 4.7km</span></div><div><span class="tag tag-orange">숙박비 가장 비쌈</span></div></div><div class="btn-links"><a class="btn-link btn-sky" href="https://www.skyscanner.co.kr/transport/flights/sela/fuk/261010/261012/?adultsv2=5&cabinclass=economy&childrenv2=&rtn=1" target="_blank">스카이스캐너</a><a class="btn-link btn-book" href="https://www.booking.com/searchresults.ko.html?ss=fukuoka&checkin=2026-10-10&checkout=2026-10-12&group_adults=5&no_rooms=2&group_children=0&order=price" target="_blank">부킹닷컴</a></div></div>
-</div>
-<div class="section-title">상세 비교</div>
-<table><thead><tr><th>순위</th><th>도시</th><th>항공(1인)</th><th>항공(5인)</th><th>숙박(2룸2박)</th><th>총합(5인)</th></tr></thead><tbody>
-<tr><td>1</td><td><strong>청다오</strong></td><td class="best">₩169,600</td><td>₩848,000</td><td>₩119,444</td><td class="total-col best">₩967,444</td></tr>
-<tr><td>2</td><td><strong>옌타이</strong></td><td>₩203,300</td><td>₩1,016,500</td><td>₩171,850</td><td class="total-col">₩1,188,350</td></tr>
-<tr><td>3</td><td><strong>오사카</strong></td><td>₩369,140</td><td>₩1,845,700</td><td>₩145,912</td><td class="total-col">₩1,991,612</td></tr>
-<tr><td>4</td><td><strong>타이베이</strong></td><td>₩342,006</td><td>₩1,710,026</td><td>₩283,102</td><td class="total-col">₩1,993,128</td></tr>
-<tr><td>5</td><td><strong>홍콩</strong></td><td>₩367,700</td><td>₩1,838,500</td><td>₩213,325</td><td class="total-col">₩2,051,825</td></tr>
-<tr><td>6</td><td><strong>후쿠오카</strong></td><td>₩373,200</td><td>₩1,866,000</td><td>₩411,973</td><td class="total-col">₩2,277,973</td></tr>
-</tbody></table>
-<div class="section-title">탈락 후보</div>
-<div class="elim">
-<p>중국: 청다오(₩169,600) + 옌타이(₩203,300) 선정 | 탈락: <span>다롄 ₩208,000</span> / <span>지난 ₩254,600</span></p>
-<p>일본: 오사카(₩369,140) + 후쿠오카(₩373,200) 선정 | 탈락: <span>삿포로 ₩442,700</span></p>
-</div>
-<div style="margin-top:20px;font-size:0.8rem;color:#718096;line-height:1.8;background:#fff;border-radius:8px;padding:14px 18px;box-shadow:0 1px 4px rgba(0,0,0,0.06);">
-<strong style="color:#2d3748;">조회 기준</strong> | 2026-09-23 / 서울 전체 공항 / 성인 5명 이코노미 왕복 / 숙박: 도미토리 제외 2룸 최저가(세금포함) / 실제 예약시 가격 변동 가능
+  <div style="padding:20px 24px;">
+    <h3 style="font-size:0.95rem; font-weight:700; color:#2d3748; margin-bottom:10px; border-bottom:2px solid #e2e8f0; padding-bottom:6px;">상세 비용</h3>
+    <div id="modal-cost"></div>
+    <h3 style="font-size:0.95rem; font-weight:700; color:#2d3748; margin:18px 0 10px; border-bottom:2px solid #e2e8f0; padding-bottom:6px;">추천 관광지</h3>
+    <div id="modal-attractions"></div>
+    <h3 style="font-size:0.95rem; font-weight:700; color:#2d3748; margin:18px 0 10px; border-bottom:2px solid #e2e8f0; padding-bottom:6px;">추천 / 주의사항</h3>
+    <div id="modal-pros-cons"></div>
+  </div>
 </div>
 </div>
+
+<style>
+.cost-table { width:100%; border-collapse:collapse; font-size:0.85rem; }
+.cost-table td { padding:7px 10px; border-bottom:1px solid #edf2f7; }
+.cost-table tr:last-child td { border-bottom:none; font-weight:700; background:#f7fafc; }
+.cost-table .ct-label { color:#718096; width:55%; }
+.cost-table .ct-val { font-weight:600; color:#2d3748; text-align:right; }
+.attraction { display:flex; gap:12px; margin-bottom:14px; align-items:flex-start; }
+.attraction img { width:90px; height:65px; object-fit:cover; border-radius:6px; flex-shrink:0; background:#edf2f7; }
+.attraction-no-img { width:90px; height:65px; border-radius:6px; flex-shrink:0; background:#edf2f7; display:flex; align-items:center; justify-content:center; font-size:0.7rem; color:#a0aec0; }
+.attraction-info h4 { font-size:0.88rem; font-weight:700; color:#2d3748; margin-bottom:3px; }
+.attraction-info p { font-size:0.8rem; color:#718096; line-height:1.5; }
+.pros-cons-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+@media (max-width:520px) { .pros-cons-grid { grid-template-columns:1fr; } .attraction { flex-direction:column; } }
+.pros-box, .cons-box { border-radius:8px; padding:10px 12px; font-size:0.82rem; line-height:1.7; }
+.pros-box { background:#f0fff4; }
+.pros-box h4 { color:#276749; font-weight:700; margin-bottom:5px; }
+.cons-box { background:#fff5f5; }
+.cons-box h4 { color:#c53030; font-weight:700; margin-bottom:5px; }
+.pros-box li, .cons-box li { margin-left:14px; color:#4a5568; }
+</style>
+
+<script>
+const cityData = {
+  qingdao: {
+    name: '청다오 (중국)', rank: 1, total: '&#8361;1,135,944',
+    cost: [
+      ['출국 항공편', '진에어(JinAir) ICN&#8594;TAO 07:15&#8594;07:55 직항'],
+      ['귀국 항공편', '제주항공(JejuAir) TAO&#8594;ICN 23:05&#8594;01:40+1 직항'],
+      ['항공 1인', '&#8361;203,300'],
+      ['항공 5인 합계', '&#8361;1,016,500'],
+      ['숙소', 'Jiumi Hutong Homestay (평점 8.6 / 중심 5.1km)'],
+      ['숙박 2룸 2박', '&#8361;119,444'],
+      ['총합 (5인)', '&#8361;1,135,944']
+    ],
+    attractions: [
+      { name: '칭다오 맥주박물관', desc: '1903년 창업 역사를 그대로 보존한 체험형 박물관. 현장 시음 포함. 약 2시간 소요.', img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/ba/Tsingtao_Brewery_Museum.jpg/600px-Tsingtao_Brewery_Museum.jpg' },
+      { name: '잔교 (栈桥)', desc: '칭다오의 상징. 1892년 건설된 460m 석조 부두. 회란각과 함께 사진 명소.', img: '' },
+      { name: '팔대관 (八大관)', desc: '독일·영국·일본 등 8개국 건축양식이 공존하는 유럽풍 주거 구역. 산책 코스 최고.', img: '' },
+      { name: '노산 (崂山)', desc: '칭다오 동쪽 해안 명산. 도교 사원과 폭포, 바다 조망을 한 번에. 케이블카 운행.', img: '' }
+    ],
+    pros: ['5인 기준 총비용 1위 — 2위 옌타이보다도 7만원 저렴', '숙소 평점 8.6으로 6개 도시 중 최고', '칭다오 맥주 + 해산물 문화 — 성인 여행자 만족도 높음'],
+    cons: ['중국어 장벽 — 영어 소통 어렵고 간판도 한자 중심', '귀국편 23:05 야간 출발 — 마지막 날 저녁까지 시간 조율 필요']
+  },
+  yantai: {
+    name: '옌타이 (중국)', rank: 2, total: '&#8361;1,208,850',
+    cost: [
+      ['출국 항공편', '이스타항공(Eastar) ICN&#8594;YNT 08:55&#8594;09:25 직항'],
+      ['귀국 항공편', '이스타항공(Eastar) YNT&#8594;ICN 16:00&#8594;18:30 직항'],
+      ['항공 1인', '&#8361;207,400'],
+      ['항공 5인 합계', '&#8361;1,037,000'],
+      ['숙소', '7Days Inn Development Zone Beach (평점 8.0 / 중심 14.4km)'],
+      ['숙박 2룸 2박', '&#8361;171,850'],
+      ['총합 (5인)', '&#8361;1,208,850']
+    ],
+    attractions: [
+      { name: '봉래각 (蓬莱阁)', desc: '2000년 역사의 도교 사원군. 중국 4대 명루 중 하나. 해무 낀 날 신선경 연출.', img: '' },
+      { name: '옌타이 해변 (烟台海滨)', desc: '조용하고 깨끗한 해수욕장. 성수기도 비교적 한산. 해산물 바베큐 노점 풍성.', img: '' },
+      { name: '장위 와이너리 (张裕酒文化博物馆)', desc: '1892년 창립 중국 최초 와이너리. 와인 시음 가능한 역사 박물관.', img: '' }
+    ],
+    pros: ['조용한 해변과 여유로운 분위기 — 관광객 적어 붐비지 않음', '중국 도시 중 가성비 2위 — 항공+숙박 모두 저렴', '이스타항공 직항으로 왕복 모두 낮 시간 비행'],
+    cons: ['관광 인프라 칭다오보다 부족 — 한국어·영어 안내 거의 없음', '시내 중심까지 14.4km — 이동 불편, 택시/차량 필수']
+  },
+</script>
+<script>
+Object.assign(cityData, {
+  hongkong: {
+    name: '홍콩', rank: 3, total: '&#8361;1,571,325',
+    cost: [
+      ['출국 항공편', '홍콩익스프레스(HK Express) ICN&#8594;HKG 06:40&#8594;09:30 직항'],
+      ['귀국 항공편', '홍콩익스프레스(HK Express) HKG&#8594;ICN 21:00&#8594;01:40+1 직항'],
+      ['항공 1인', '&#8361;271,600'],
+      ['항공 5인 합계', '&#8361;1,358,000'],
+      ['숙소', 'Dhillon Hostel 침사추이 (평점 5.2 / 중심 2.1km)'],
+      ['숙박 2룸 2박', '&#8361;213,325'],
+      ['총합 (5인)', '&#8361;1,571,325 (기존 5위 &rarr; 3위 상승)']
+    ],
+    attractions: [
+      { name: '빅토리아 피크 (太平山)', desc: '홍콩 야경 조망 1번지. 트램 이용 권장. 해 질 무렵 방문이 최고.', img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/47/HK_Victoria_Harbour_Night.jpg/600px-HK_Victoria_Harbour_Night.jpg' },
+      { name: '침사추이 해변 산책로', desc: '구룡 반도에서 홍콩섬 야경을 정면으로. 심포니 오브 라이트 쇼 매일 저녁 8시.', img: '' },
+      { name: '딤섬 & 얌차 문화', desc: '진짜 광둥 딤섬. 팀호완(Tim Ho Wan) 등 현지 맛집은 줄 서서 먹는 보람이 있음.', img: '' },
+      { name: '몽콕 야시장 (旺角)', desc: '쇼핑과 길거리 음식의 밀도가 세계 최고 수준. 여인가·금붕어가 독특한 볼거리.', img: '' }
+    ],
+    pros: ['새 항공 조건 적용 후 기존 5위에서 3위로 대폭 상승', '홍콩익스프레스 직항으로 출발 06:40 — 현지에서 충분히 활용 가능', '딤섬·쇼핑·야경 밀도가 6개 도시 중 최고 수준'],
+    cons: ['숙소 평점 5.2 — 6개 도시 최저, 가성비 숙박 찾기 어려움', '귀국 21:00 출발로 마지막 날 저녁 공항 이동 필요', '복잡하고 빠른 도시 — 어린아이 동반 시 체력 소모 클 수 있음']
+  },
+  osaka: {
+    name: '오사카 (일본)', rank: 4, total: '&#8361;1,921,412',
+    cost: [
+      ['출국 항공편', '제주항공 ICN&#8594;KIX 07:10&#8594;09:05 직항 (간사이 공항 도착)'],
+      ['귀국 항공편', '제주항공 UKB&#8594;ICN 16:00&#8594;18:00 직항 (고베 공항 출발!)'],
+      ['항공 1인', '&#8361;355,100'],
+      ['항공 5인 합계', '&#8361;1,775,500'],
+      ['숙소', 'Reifa宿泊 動物園前2 (평점 7.9 / 중심 6.8km)'],
+      ['숙박 2룸 2박', '&#8361;145,912'],
+      ['총합 (5인)', '&#8361;1,921,412'],
+      ['주의', '귀국편 고베(UKB) 출발 — 오사카에서 고베까지 약 40분 이동 필요']
+    ],
+    attractions: [
+      { name: '오사카성 (大阪城)', desc: '16세기 도요토미 히데요시 시대 건축. 천수각 전망대에서 오사카 전경 조망.', img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/55/Osaka_Castle_08bs3200.jpg/600px-Osaka_Castle_08bs3200.jpg' },
+      { name: '도톤보리 (道頓堀)', desc: '오사카 먹방 1번지. 글리코 간판 앞 사진은 필수. 타코야키·라멘·오코노미야키 집결지.', img: '' },
+      { name: '유니버설 스튜디오 재팬 (USJ)', desc: '아이들이 가장 좋아하는 코스. 1일 패스 구매 필수. 해리포터 구역 인기.', img: '' },
+      { name: '신사이바시 (心斎橋)', desc: '오사카 최대 쇼핑 거리. 명품부터 드러그스토어까지. 약 600m 아케이드.', img: '' }
+    ],
+    pros: ['아이와 함께라면 USJ — 가족 만족도 최고', '도톤보리 먹방 문화 — 식비 대비 만족도 압도적', '한국어 안내·한국인 대응 식당 많아 언어 장벽 낮음'],
+    cons: ['10월 연휴 시즌이라 관광객 많음 — 인기 맛집 대기 1시간 이상', '귀국 고베(UKB) 출발 — 오사카 도심에서 이동 시간·비용 추가', '숙박 평점 7.9이지만 중심에서 6.8km — 교통비 감안 필요']
+  }
+});
+</script>
+<script>
+Object.assign(cityData, {
+  taipei: {
+    name: '타이베이 (대만)', rank: 5, total: '&#8361;1,993,128',
+    cost: [
+      ['출국 항공편', '이스타항공 GMP&#8594;TSA 11:15&#8594;12:55 직항 (김포 출발, 쑹산 도착)'],
+      ['귀국 항공편', '스쿠트 항공 TPE&#8594;ICN 18:10&#8594;21:45 직항 (타오위엔 출발)'],
+      ['항공 1인', '&#8361;342,006'],
+      ['항공 5인 합계', '&#8361;1,710,026'],
+      ['숙소', 'Ku Shan Yuan Hotel (평점 6.3 / 중심 2.2km)'],
+      ['숙박 2룸 2박', '&#8361;283,102'],
+      ['총합 (5인)', '&#8361;1,993,128'],
+      ['참고', '출발 김포(GMP)/도착 쑹산(TSA), 귀국 타오위엔(TPE) — 공항 다름 주의']
+    ],
+    attractions: [
+      { name: '타이베이 101', desc: '508m 초고층 빌딩. 89층 전망대에서 타이베이 전경 조망. 야경이 특히 장관.', img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e4/Taipei101.shot.at.night.jpg/400px-Taipei101.shot.at.night.jpg' },
+      { name: '스린 야시장 (士林夜市)', desc: '대만 최대 야시장. 굴전·지파이·망고빙수 필수 코스. 저녁 6시 이후 본격 운영.', img: '' },
+      { name: '국립고궁박물원 (故宮)', desc: '세계 4대 박물관 중 하나. 7만여 점 중국 문물 소장. 취옥배추와 육형석 필수 관람.', img: '' },
+      { name: 'MRT 교통 편리성', desc: '타이베이 지하철은 정시 운행, 저렴, 쾌적. 관광지 대부분 역 도보 10분 이내.', img: '' }
+    ],
+    pros: ['MRT 교통망 세계 최고 수준 — 이동 걱정 없음', '야시장 문화 — 어린이도 즐기는 길거리 음식 천국', '대만인 친절도 높음 — 한국인 관광객 익숙해 소통 원활'],
+    cons: ['항공+숙박 합산 5위 — 가성비 아쉬운 편', '숙소 평점 6.3 — 5개 도시 중 홍콩 다음으로 낮음', '출발/도착 공항이 달라 이동 계획 사전 확인 필요']
+  },
+  fukuoka: {
+    name: '후쿠오카 (일본)', rank: 6, total: '&#8361;2,164,473',
+    cost: [
+      ['출국 항공편', '진에어 ICN&#8594;FUK 17:00&#8594;18:30 직항 (조건 근사치: 12시 이전 편 없음)'],
+      ['귀국 항공편', '진에어 FUK&#8594;ICN 19:40&#8594;21:00 직항'],
+      ['항공 1인', '&#8361;350,500'],
+      ['항공 5인 합계', '&#8361;1,752,500'],
+      ['숙소', '竹下 inn Near the Airport (평점 7.2 / 중심 4.7km)'],
+      ['숙박 2룸 2박', '&#8361;411,973'],
+      ['총합 (5인)', '&#8361;2,164,473'],
+      ['참고', '10월 10일 출국편 전체 노선에서 12:00 이전 출발 편 없음 — 17:00 최이른 편']
+    ],
+    attractions: [
+      { name: '후쿠오카 야타이 (屋台)', desc: '하카타역·텐진 강변 야외 포장마차. 라멘·모츠나베·오뎅. 저녁 6시~심야 운영.', img: '' },
+      { name: '다자이후 텐만구 (太宰府天満宮)', desc: '학문의 신 모시는 1100년 역사 신사. 우메가에모치(떡) 맛집 거리도 볼거리.', img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c9/Dazaifu_Tenmangu.jpg/600px-Dazaifu_Tenmangu.jpg' },
+      { name: '캐널시티 하카타 (Canal City)', desc: '운하를 품은 복합 쇼핑몰. 분수쇼 매시간 진행. 식당·영화관·상점 모두 집결.', img: '' },
+      { name: '후쿠오카 공항 접근성', desc: '하카타역에서 지하철 2정거장(5분), 텐진에서 11분. 공항 접근성 세계 최고 수준.', img: '' }
+    ],
+    pros: ['라멘+모츠나베 — 일본 먹방 중에서도 후쿠오카가 특히 강함', '공항에서 시내까지 5분 — 이동 스트레스 제로', '야타이 문화 — 현지 분위기 가장 진하게 느낄 수 있는 도시'],
+    cons: ['6개 도시 중 총비용 최고가 — 특히 숙박 &#8361;411,973으로 2위 대비 2배 이상', '출국편 12시 이전 없음 — 10일 오전을 사실상 서울에서 보내야 함', '성수기 야타이는 줄이 길고 단체 예약 어려운 경우 있음']
+  }
+});
+</script>
+<script>
+function openModal(cityId) {
+  const d = cityData[cityId];
+  if (!d) return;
+  document.getElementById('modal-city').innerHTML = d.rank + '위 &mdash; ' + d.name;
+  document.getElementById('modal-total').innerHTML = '5인 총합 ' + d.total;
+
+  let costHtml = '<table class="cost-table">';
+  d.cost.forEach(function(row) {
+    costHtml += '<tr><td class="ct-label">' + row[0] + '</td><td class="ct-val">' + row[1] + '</td></tr>';
+  });
+  costHtml += '</table>';
+  document.getElementById('modal-cost').innerHTML = costHtml;
+
+  let attrHtml = '';
+  d.attractions.forEach(function(a) {
+    attrHtml += '<div class="attraction">';
+    if (a.img) {
+      attrHtml += '<img src="' + a.img + '" alt="' + a.name + '" onerror="this.style.display=\'none\'; this.nextSibling.style.display=\'flex\';">';
+      attrHtml += '<div class="attraction-no-img" style="display:none;">사진 없음</div>';
+    } else {
+      attrHtml += '<div class="attraction-no-img">사진 준비중</div>';
+    }
+    attrHtml += '<div class="attraction-info"><h4>' + a.name + '</h4><p>' + a.desc + '</p></div>';
+    attrHtml += '</div>';
+  });
+  document.getElementById('modal-attractions').innerHTML = attrHtml;
+
+  let pcHtml = '<div class="pros-cons-grid">';
+  pcHtml += '<div class="pros-box"><h4>추천 이유</h4><ul>';
+  d.pros.forEach(function(p) { pcHtml += '<li>' + p + '</li>'; });
+  pcHtml += '</ul></div>';
+  pcHtml += '<div class="cons-box"><h4>주의 / 비추 포인트</h4><ul>';
+  d.cons.forEach(function(c) { pcHtml += '<li>' + c + '</li>'; });
+  pcHtml += '</ul></div>';
+  pcHtml += '</div>';
+  document.getElementById('modal-pros-cons').innerHTML = pcHtml;
+
+  document.getElementById('modal-overlay').style.display = 'block';
+  document.body.style.overflow = 'hidden';
+}
+
+function closeModal(e) {
+  if (e.target === document.getElementById('modal-overlay')) {
+    document.getElementById('modal-overlay').style.display = 'none';
+    document.body.style.overflow = '';
+  }
+}
+
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') {
+    document.getElementById('modal-overlay').style.display = 'none';
+    document.body.style.overflow = '';
+  }
+});
+</script>
 </body>
-                                                                                                                                                                                                                                                                                                    </html>
+</html>
