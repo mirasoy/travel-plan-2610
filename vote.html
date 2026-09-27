@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>가족 여행지 투표</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif; background: #f0f4f8; color: #1a202c; min-height: 100vh; }
+
+header { background: #1a365d; color: #fff; padding: 20px 20px 16px; text-align: center; }
+header h1 { font-size: 1.2rem; font-weight: 700; margin-bottom: 4px; }
+header .sub { font-size: 0.82rem; opacity: 0.8; }
+.back-btn { display: inline-flex; align-items: center; gap: 5px; background: rgba(255,255,255,0.15); color: #fff; border: none; padding: 6px 12px; border-radius: 16px; font-size: 0.8rem; font-weight: 600; cursor: pointer; text-decoration: none; margin-bottom: 10px; }
+
+.container { max-width: 540px; margin: 0 auto; padding: 20px 16px 60px; }
+
+/* TAB */
+.tabs { display: flex; background: #fff; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 20px; overflow: hidden; }
+.tab-btn { flex: 1; padding: 12px; font-size: 0.88rem; font-weight: 700; border: none; background: transparent; cursor: pointer; color: #718096; transition: all 0.2s; }
+.tab-btn.active { background: #1a365d; color: #fff; }
+
+/* FORM CARD */
+.form-card { background: #fff; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); padding: 20px; margin-bottom: 16px; }
+.form-card h2 { font-size: 0.92rem; font-weight: 700; color: #2d3748; margin-bottom: 14px; border-left: 4px solid #3182ce; padding-left: 10px; }
+
+/* NAME RADIO */
+.name-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+.name-option input { display: none; }
+.name-option label { display: block; text-align: center; padding: 10px 4px; border-radius: 8px; border: 2px solid #e2e8f0; font-size: 0.82rem; font-weight: 600; cursor: pointer; color: #4a5568; transition: all 0.15s; }
+.name-option input:checked + label { border-color: #3182ce; background: #ebf8ff; color: #2b6cb0; }
+
+/* CITY SELECT */
+.city-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.city-option input { display: none; }
+.city-option label { display: block; padding: 12px 10px; border-radius: 8px; border: 2px solid #e2e8f0; font-size: 0.85rem; font-weight: 600; cursor: pointer; color: #4a5568; transition: all 0.15s; text-align: center; }
+.city-option label .city-flag { display: block; font-size: 1.4rem; margin-bottom: 2px; }
+.city-option input:checked + label { border-color: #3182ce; background: #ebf8ff; color: #2b6cb0; }
+.city-option.disabled label { opacity: 0.35; cursor: not-allowed; pointer-events: none; background: #f7fafc; }
+
+/* COMMENT */
+textarea { width: 100%; border: 2px solid #e2e8f0; border-radius: 8px; padding: 10px 12px; font-size: 0.85rem; font-family: inherit; resize: vertical; min-height: 80px; color: #2d3748; transition: border-color 0.15s; }
+textarea:focus { outline: none; border-color: #3182ce; }
+.optional-tag { font-size: 0.72rem; color: #a0aec0; font-weight: 400; margin-left: 6px; }
+
+/* SUBMIT */
+.submit-btn { width: 100%; padding: 14px; background: #1a365d; color: #fff; border: none; border-radius: 10px; font-size: 1rem; font-weight: 700; cursor: pointer; transition: background 0.15s; }
+.submit-btn:hover { background: #2a4a7f; }
+.submit-btn:disabled { background: #a0aec0; cursor: not-allowed; }
+
+/* SUCCESS */
+.success-msg { display: none; text-align: center; padding: 30px 20px; }
+.success-msg .check { font-size: 3rem; margin-bottom: 12px; }
+.success-msg h3 { font-size: 1.1rem; font-weight: 700; color: #276749; margin-bottom: 6px; }
+.success-msg p { font-size: 0.85rem; color: #718096; }
+
+/* RESULT */
+.result-section { display: none; }
+.result-card { background: #fff; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); padding: 20px; margin-bottom: 16px; }
+.result-card h2 { font-size: 0.92rem; font-weight: 700; color: #2d3748; margin-bottom: 16px; border-left: 4px solid #3182ce; padding-left: 10px; }
+
+.vote-bar-wrap { margin-bottom: 12px; }
+.vote-bar-label { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+.vote-bar-city { font-size: 0.85rem; font-weight: 600; color: #2d3748; }
+.vote-bar-count { font-size: 0.78rem; color: #718096; }
+.vote-bar-bg { background: #edf2f7; border-radius: 4px; height: 10px; }
+.vote-bar-fill { background: #3182ce; border-radius: 4px; height: 10px; transition: width 0.5s ease; }
+.vote-bar-fill.first { background: #d69e2e; }
+.vote-bar-fill.second { background: #718096; }
+
+.vote-detail-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+.vote-detail-table th { text-align: left; padding: 6px 8px; color: #718096; font-weight: 600; border-bottom: 2px solid #edf2f7; }
+.vote-detail-table td { padding: 8px 8px; border-bottom: 1px solid #f0f4f8; vertical-align: top; }
+.vote-detail-table tr:last-child td { border-bottom: none; }
+
+.comment-item { background: #f7fafc; border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; }
+.comment-name { font-size: 0.78rem; font-weight: 700; color: #3182ce; margin-bottom: 3px; }
+.comment-choices { font-size: 0.75rem; color: #718096; margin-bottom: 4px; }
+.comment-text { font-size: 0.83rem; color: #2d3748; line-height: 1.55; }
+
+.no-data { text-align: center; color: #a0aec0; font-size: 0.85rem; padding: 20px; }
+.loading { text-align: center; color: #a0aec0; font-size: 0.85rem; padding: 20px; }
+
+.score-badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 0.72rem; font-weight: 700; }
+.score-1 { background: #fefcbf; color: #744210; }
+.score-2 { background: #e2e8f0; color: #4a5568; }
+</style>
+</head>
+<body>
+
+<header>
+  <a href="index.html" class="back-btn">← 비교표로 돌아가기</a>
+  <h1>가족 여행지 투표</h1>
+  <p class="sub">1순위, 2순위 도시를 선택하고 의견을 남겨주세요</p>
+</header>
+
+<div class="container">
+  <div class="tabs">
+    <button class="tab-btn active" id="tab-vote" onclick="showTab('vote')">투표하기</button>
+    <button class="tab-btn" id="tab-result" onclick="showTab('result')">결과 보기</button>
+  </div>
+
+  <!-- 투표 섹션 -->
+  <div id="vote-section">
+    <div class="form-card">
+      <h2>나는 누구?</h2>
+      <div class="name-grid">
+        <div class="name-option">
+          <input type="radio" name="voter" id="n-jinsuk" value="진숙">
+          <label for="n-jinsuk">진숙</label>
+        </div>
+        <div class="name-option">
+          <input type="radio" name="voter" id="n-gisu" value="기수">
+          <label for="n-gisu">기수</label>
+        </div>
+        <div class="name-option">
+          <input type="radio" name="voter" id="n-mira" value="미라">
+          <label for="n-mira">미라</label>
+        </div>
+        <div class="name-option">
+          <input type="radio" name="voter" id="n-sangwon" value="상원">
+          <label for="n-sangwon">상원</label>
+        </div>
+        <div class="name-option">
+          <input type="radio" name="voter" id="n-taeho" value="태호">
+          <label for="n-taeho">태호</label>
+        </div>
+      </div>
+    </div>
+
+    <div class="form-card">
+      <h2>1순위 도시</h2>
+      <div class="city-grid" id="first-grid">
+        <div class="city-option">
+          <input type="radio" name="first" id="f-yantai" value="옌타이" onchange="updateSecond()">
+          <label for="f-yantai"><span class="city-flag">🇨🇳</span>옌타이</label>
+        </div>
+        <div class="city-option">
+          <input type="radio" name="first" id="f-osaka" value="오사카" onchange="updateSecond()">
+          <label for="f-osaka"><span class="city-flag">🇯🇵</span>오사카</label>
+        </div>
+        <div class="city-option">
+          <input type="radio" name="first" id="f-qingdao" value="청다오" onchange="updateSecond()">
+          <label for="f-qingdao"><span class="city-flag">🇨🇳</span>청다오</label>
+        </div>
+        <div class="city-option">
+          <input type="radio" name="first" id="f-fukuoka" value="후쿠오카" onchange="updateSecond()">
+          <label for="f-fukuoka"><span class="city-flag">🇯🇵</span>후쿠오카</label>
+        </div>
+        <div class="city-option">
+          <input type="radio" name="first" id="f-taipei" value="타이베이" onchange="updateSecond()">
+          <label for="f-taipei"><span class="city-flag">🇹🇼</span>타이베이</label>
+        </div>
+      </div>
+    </div>
+
+    <div class="form-card">
+      <h2>2순위 도시</h2>
+      <div class="city-grid" id="second-grid">
+        <div class="city-option" id="s-yantai-wrap">
+          <input type="radio" name="second" id="s-yantai" value="옌타이">
+          <label for="s-yantai"><span class="city-flag">🇨🇳</span>옌타이</label>
+        </div>
+        <div class="city-option" id="s-osaka-wrap">
+          <input type="radio" name="second" id="s-osaka" value="오사카">
+          <label for="s-osaka"><span class="city-flag">🇯🇵</span>오사카</label>
+        </div>
+        <div class="city-option" id="s-qingdao-wrap">
+          <input type="radio" name="second" id="s-qingdao" value="청다오">
+          <label for="s-qingdao"><span class="city-flag">🇨🇳</span>청다오</label>
+        </div>
+        <div class="city-option" id="s-fukuoka-wrap">
+          <input type="radio" name="second" id="s-fukuoka" value="후쿠오카">
+          <label for="s-fukuoka"><span class="city-flag">🇯🇵</span>후쿠오카</label>
+        </div>
+        <div class="city-option" id="s-taipei-wrap">
+          <input type="radio" name="second" id="s-taipei" value="타이베이">
+          <label for="s-taipei"><span class="city-flag">🇹🇼</span>타이베이</label>
+        </div>
+      </div>
+    </div>
+
+    <div class="form-card">
+      <h2>한 마디 <span class="optional-tag">선택사항</span></h2>
+      <textarea id="comment" placeholder="가고 싶은 이유, 하고 싶은 것, 걱정되는 것 등 자유롭게 써주세요"></textarea>
+    </div>
+
+    <button class="submit-btn" id="submit-btn" onclick="submitVote()">투표 완료</button>
+
+    <div class="success-msg" id="success-msg">
+      <div class="check">✓</div>
+      <h3>투표 완료!</h3>
+      <p>결과 보기 탭에서 현황을 확인하세요</p>
+    </div>
+  </div>
+
+  <!-- 결과 섹션 -->
+  <div id="result-section" class="result-section">
+    <div class="result-card">
+      <h2>1순위 득표 현황</h2>
+      <div id="first-bars"><div class="loading">불러오는 중...</div></div>
+    </div>
+    <div class="result-card">
+      <h2>2순위 득표 현황</h2>
+      <div id="second-bars"><div class="loading">불러오는 중...</div></div>
+    </div>
+    <div class="result-card">
+      <h2>투표 현황</h2>
+      <div id="vote-table"><div class="loading">불러오는 중...</div></div>
+    </div>
+    <div class="result-card">
+      <h2>가족 코멘트</h2>
+      <div id="comments-list"><div class="loading">불러오는 중...</div></div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getFirestore, doc, setDoc, getDocs, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyARuzrDMQb4oMYcJywrMNctXopIHeqCNUA",
+  authDomain: "travel-26.firebaseapp.com",
+  projectId: "travel-26",
+  storageBucket: "travel-26.firebasestorage.app",
+  messagingSenderId: "174199082566",
+  appId: "1:174199082566:web:7d4fc7c1cf429e941d8447"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+const CITIES = ["옌타이", "오사카", "청다오", "후쿠오카", "타이베이"];
+const cityMap = {
+  "옌타이": "s-yantai-wrap",
+  "오사카": "s-osaka-wrap",
+  "청다오": "s-qingdao-wrap",
+  "후쿠오카": "s-fukuoka-wrap",
+  "타이베이": "s-taipei-wrap"
+};
+
+// 2순위 업데이트 (1순위 선택 시 해당 도시 비활성화)
+window.updateSecond = function() {
+  const first = document.querySelector('input[name="first"]:checked');
+  CITIES.forEach(city => {
+    const wrap = document.getElementById(cityMap[city]);
+    if (first && city === first.value) {
+      wrap.classList.add('disabled');
+      // 2순위가 1순위랑 같으면 선택 해제
+      const radio = wrap.querySelector('input[type="radio"]');
+      if (radio && radio.checked) radio.checked = false;
+    } else {
+      wrap.classList.remove('disabled');
+    }
+  });
+};
+
+// 탭 전환
+window.showTab = function(tab) {
+  document.getElementById('vote-section').style.display = tab === 'vote' ? 'block' : 'none';
+  document.getElementById('result-section').style.display = tab === 'result' ? 'block' : 'none';
+  document.getElementById('tab-vote').classList.toggle('active', tab === 'vote');
+  document.getElementById('tab-result').classList.toggle('active', tab === 'result');
+  if (tab === 'result') loadResults();
+};
+
+// 투표 제출
+window.submitVote = async function() {
+  const voter = document.querySelector('input[name="voter"]:checked');
+  const first = document.querySelector('input[name="first"]:checked');
+  const second = document.querySelector('input[name="second"]:checked');
+  const comment = document.getElementById('comment').value.trim();
+
+  if (!voter) { alert('이름을 선택해주세요'); return; }
+  if (!first) { alert('1순위 도시를 선택해주세요'); return; }
+  if (!second) { alert('2순위 도시를 선택해주세요'); return; }
+
+  const btn = document.getElementById('submit-btn');
+  btn.disabled = true;
+  btn.textContent = '저장 중...';
+
+  try {
+    // 이름을 document ID로 사용 → 재투표 시 덮어쓰기
+    await setDoc(doc(db, 'votes', voter.value), {
+      name: voter.value,
+      first: first.value,
+      second: second.value,
+      comment: comment,
+      updatedAt: new Date().toISOString()
+    });
+
+    document.getElementById('submit-btn').style.display = 'none';
+    document.getElementById('success-msg').style.display = 'block';
+  } catch (e) {
+    alert('저장 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
+    btn.disabled = false;
+    btn.textContent = '투표 완료';
+    console.error(e);
+  }
+};
+
+// 결과 로드
+async function loadResults() {
+  try {
+    const snapshot = await getDocs(collection(db, 'votes'));
+    const votes = [];
+    snapshot.forEach(d => votes.push(d.data()));
+
+    renderBars('first-bars', votes, 'first');
+    renderBars('second-bars', votes, 'second');
+    renderTable(votes);
+    renderComments(votes);
+  } catch (e) {
+    console.error(e);
+    document.getElementById('first-bars').innerHTML = '<div class="no-data">데이터를 불러올 수 없습니다</div>';
+  }
+}
+
+function renderBars(containerId, votes, field) {
+  const container = document.getElementById(containerId);
+  if (votes.length === 0) {
+    container.innerHTML = '<div class="no-data">아직 투표가 없어요</div>';
+    return;
+  }
+
+  const counts = {};
+  CITIES.forEach(c => counts[c] = 0);
+  votes.forEach(v => { if (v[field]) counts[v[field]]++; });
+
+  const sorted = CITIES.slice().sort((a, b) => counts[b] - counts[a]);
+  const max = Math.max(...Object.values(counts), 1);
+
+  container.innerHTML = sorted.map(city => {
+    const cnt = counts[city];
+    const pct = Math.round((cnt / max) * 100);
+    const names = votes.filter(v => v[field] === city).map(v => v.name).join(', ');
+    return `
+      <div class="vote-bar-wrap">
+        <div class="vote-bar-label">
+          <span class="vote-bar-city">${city}</span>
+          <span class="vote-bar-count">${cnt}표${names ? ' (' + names + ')' : ''}</span>
+        </div>
+        <div class="vote-bar-bg">
+          <div class="vote-bar-fill ${field}" style="width:${pct}%"></div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function renderTable(votes) {
+  const container = document.getElementById('vote-table');
+  if (votes.length === 0) {
+    container.innerHTML = '<div class="no-data">아직 투표가 없어요</div>';
+    return;
+  }
+
+  const names = ["진숙", "기수", "미라", "상원", "태호"];
+  const rows = names.map(name => {
+    const v = votes.find(x => x.name === name);
+    if (!v) return `<tr><td>${name}</td><td colspan="2" style="color:#a0aec0">미투표</td></tr>`;
+    return `<tr>
+      <td><strong>${name}</strong></td>
+      <td><span class="score-badge score-1">1위 ${v.first}</span></td>
+      <td><span class="score-badge score-2">2위 ${v.second}</span></td>
+    </tr>`;
+  }).join('');
+
+  container.innerHTML = `
+    <table class="vote-detail-table">
+      <thead><tr><th>이름</th><th>1순위</th><th>2순위</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+}
+
+function renderComments(votes) {
+  const container = document.getElementById('comments-list');
+  const withComment = votes.filter(v => v.comment && v.comment.trim());
+  if (withComment.length === 0) {
+    container.innerHTML = '<div class="no-data">아직 코멘트가 없어요</div>';
+    return;
+  }
+
+  container.innerHTML = withComment.map(v => `
+    <div class="comment-item">
+      <div class="comment-name">${v.name}</div>
+      <div class="comment-choices">1순위: ${v.first} &nbsp;|&nbsp; 2순위: ${v.second}</div>
+      <div class="comment-text">${v.comment.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>
+    </div>
+  `).join('');
+}
+</script>
+</body>
+</html>
