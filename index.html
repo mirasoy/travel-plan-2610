@@ -15,8 +15,8 @@ header .sub { font-size: 0.85rem; opacity: 0.85; }
 .section-title { font-size: 1rem; font-weight: 700; color: #2d3748; margin: 24px 0 10px; border-left: 4px solid #3182ce; padding-left: 10px; }
 /* CARDS */
 .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 12px; }
-a.card { display: block; text-decoration: none; color: inherit; background: #fff; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); overflow: hidden; transition: transform 0.15s, box-shadow 0.15s; }
-a.card:hover { transform: translateY(-3px); box-shadow: 0 6px 20px rgba(0,0,0,0.13); }
+a.card { display: block; text-decoration: none; color: inherit; background: #fff; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); overflow: hidden; transition: transform 0.38s cubic-bezier(.4,0,.2,1), box-shadow 0.15s; }
+a.card:hover { box-shadow: 0 6px 20px rgba(0,0,0,0.13); }
 .card-header { padding: 14px 16px 10px; display: flex; justify-content: space-between; align-items: flex-start; }
 .card-city { font-size: 1.1rem; font-weight: 700; }
 .card-rank { width: 26px; height: 26px; border-radius: 50%; font-weight: 700; font-size: 0.82rem; display: flex; align-items: center; justify-content: center; color: #fff; flex-shrink: 0; }
@@ -28,6 +28,13 @@ a.card:hover { transform: translateY(-3px); box-shadow: 0 6px 20px rgba(0,0,0,0.
 .card-total { padding: 0 16px 4px; font-size: 1.3rem; font-weight: 800; color: #1a365d; }
 .card-total span { font-size: 0.78rem; font-weight: 400; color: #718096; margin-left: 4px; }
 .card-body { padding: 8px 16px 12px; font-size: 0.82rem; color: #4a5568; line-height: 1.7; }
+/* FLIGHT OPTIONS (radio buttons) */
+.flight-options { display: flex; gap: 4px; margin: 4px 0 6px; flex-wrap: wrap; }
+.fo-label { padding: 4px 10px; border-radius: 20px; border: 1.5px solid #e2e8f0; cursor: pointer; font-size: 0.74rem; color: #718096; transition: background 0.15s, border-color 0.15s, color 0.15s; user-select: none; white-space: nowrap; }
+.fo-label:has(input:checked) { background: #ebf8ff; border-color: #2b6cb0; color: #2b6cb0; font-weight: 700; }
+.fo-label input[type="radio"] { position: absolute; opacity: 0; width: 0; height: 0; pointer-events: none; }
+@media (max-width: 400px) { .fo-label { font-size: 0.68rem; padding: 3px 7px; } }
+/* FLIGHT BLOCK */
 .flight-block { background: #f7fafc; border-radius: 6px; padding: 7px 9px; margin: 6px 0 3px; font-size: 0.78rem; line-height: 1.6; }
 .fl-row { display: flex; align-items: flex-start; gap: 5px; }
 .fl-label { color: #718096; min-width: 26px; font-size: 0.73rem; padding-top: 1px; flex-shrink: 0; }
@@ -83,7 +90,6 @@ tr:hover td { background: #f7fafc; }
 .pros-box li, .cons-box li { margin-left: 14px; color: #4a5568; font-size: 0.82rem; line-height: 1.7; }
 .detail-links { display: flex; gap: 10px; }
 .detail-links a { flex: 1; text-align: center; padding: 10px; border-radius: 8px; font-size: 0.85rem; font-weight: 700; text-decoration: none; }
-/* notice */
 .notice { font-size: 0.78rem; color: #718096; line-height: 1.8; background: #fff; border-radius: 8px; padding: 12px 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); margin-top: 16px; }
 </style>
 </head>
@@ -106,15 +112,21 @@ tr:hover td { background: #f7fafc; }
 <div class="section-title">총 비용 순위 — 카드 클릭시 상세 정보</div>
 <div class="cards">
 
-<a class="card" href="#detail-yantai">
-  <div class="card-header"><div class="card-city">옌타이 (중국)</div><div class="card-rank rank-1">1</div></div>
-  <div class="card-total">&#8361;1,359,634 <span>5인 총합</span></div>
+<!-- 옌타이 — 기본 1위 (889,500 + 470,134 = 1,359,634) -->
+<a class="card" href="#detail-yantai" data-city="yantai">
+  <div class="card-header"><div class="card-city">옌타이 (중국)</div><div class="card-rank rank-1" id="badge-yantai">1</div></div>
+  <div class="card-total" id="ctotal-yantai">&#8361;1,359,634 <span>5인 총합</span></div>
   <div class="card-body">
-    <div class="flight-block">
-      <div class="fl-row"><span class="fl-label">출국</span><span class="fl-val">진에어 ICN&#8594;YNT 15:25&#8594;16:10 직항</span></div>
-      <div class="fl-row"><span class="fl-label">귀국</span><span class="fl-val">진에어 YNT&#8594;ICN 17:10&#8594;19:40 직항</span></div>
+    <div class="flight-options" onclick="event.stopPropagation()">
+      <label class="fo-label"><input type="radio" name="fo-yantai" value="recommended" checked> 추천</label>
+      <label class="fo-label"><input type="radio" name="fo-yantai" value="cheapest"> 최저가</label>
+      <label class="fo-label"><input type="radio" name="fo-yantai" value="maxtime"> 관광시간</label>
     </div>
-    <div class="row"><span class="label">항공 (5인)</span><span class="val">&#8361;889,500</span></div>
+    <div class="flight-block">
+      <div class="fl-row"><span class="fl-label">출국</span><span class="fl-val" id="dep-yantai">진에어 ICN&#8594;YNT 15:25&#8594;16:10 직항</span></div>
+      <div class="fl-row"><span class="fl-label">귀국</span><span class="fl-val" id="ret-yantai">진에어 YNT&#8594;ICN 17:10&#8594;19:40 직항</span></div>
+    </div>
+    <div class="row"><span class="label">항공 (5인)</span><span class="val" id="cair-yantai">&#8361;889,500</span></div>
     <div class="row"><span class="label">숙박 (3룸 3박)</span><span class="val">&#8361;470,134</span></div>
     <div><span class="tag tag-green">항공 가장 저렴</span> <span class="tag">Holiday Inn Express YEDA 9.3점</span></div>
   </div>
@@ -124,33 +136,21 @@ tr:hover td { background: #f7fafc; }
   </div>
 </a>
 
-<a class="card" href="#detail-osaka">
-  <div class="card-header"><div class="card-city">오사카 (일본)</div><div class="card-rank rank-2">2</div></div>
-  <div class="card-total">&#8361;1,538,503 <span>5인 총합</span></div>
+<!-- 청다오 — 기본 2위 (1,324,500 + 252,576 = 1,577,076) -->
+<a class="card" href="#detail-qingdao" data-city="qingdao">
+  <div class="card-header"><div class="card-city">청다오 (중국)</div><div class="card-rank rank-2" id="badge-qingdao">2</div></div>
+  <div class="card-total" id="ctotal-qingdao">&#8361;1,577,076 <span>5인 총합</span></div>
   <div class="card-body">
-    <div class="flight-block">
-      <div class="fl-row"><span class="fl-label">출국</span><span class="fl-val">제주항공 ICN&#8594;KIX 16:55&#8594;18:40 직항</span></div>
-      <div class="fl-row"><span class="fl-label">귀국</span><span class="fl-val">제주항공 KIX&#8594;ICN 10:50&#8594;12:55 직항</span></div>
+    <div class="flight-options" onclick="event.stopPropagation()">
+      <label class="fo-label"><input type="radio" name="fo-qingdao" value="recommended" checked> 추천</label>
+      <label class="fo-label"><input type="radio" name="fo-qingdao" value="cheapest"> 최저가</label>
+      <label class="fo-label"><input type="radio" name="fo-qingdao" value="maxtime"> 관광시간</label>
     </div>
-    <div class="row"><span class="label">항공 (5인)</span><span class="val">&#8361;1,319,350</span></div>
-    <div class="row"><span class="label">숙박 (3룸 3박)</span><span class="val">&#8361;219,153</span></div>
-    <div><span class="tag tag-green">숙박 최저가</span> <span class="tag">난바 도보권</span></div>
-  </div>
-  <div class="btn-links">
-    <a class="btn-link btn-sky" href="https://www.skyscanner.co.kr/transport/flights/sela/kix/261114/261117/?adultsv2=5&cabinclass=economy&childrenv2=&rtn=1" target="_blank" onclick="event.stopPropagation()">스카이스캐너</a>
-    <a class="btn-link btn-book" href="https://www.booking.com/searchresults.ko.html?ss=osaka&checkin=2026-11-14&checkout=2026-11-17&group_adults=5&no_rooms=3" target="_blank" onclick="event.stopPropagation()">부킹닷컴</a>
-  </div>
-</a>
-
-<a class="card" href="#detail-qingdao">
-  <div class="card-header"><div class="card-city">청다오 (중국)</div><div class="card-rank rank-3">3</div></div>
-  <div class="card-total">&#8361;1,577,076 <span>5인 총합</span></div>
-  <div class="card-body">
     <div class="flight-block">
-      <div class="fl-row"><span class="fl-label">출국</span><span class="fl-val">산동항공 ICN&#8594;TAO 14:00 직항</span></div>
-      <div class="fl-row"><span class="fl-label">귀국</span><span class="fl-val">산동항공 TAO&#8594;ICN 16:40 직항</span></div>
+      <div class="fl-row"><span class="fl-label">출국</span><span class="fl-val" id="dep-qingdao">산동항공 ICN&#8594;TAO 14:00&#8594;14:40 직항</span></div>
+      <div class="fl-row"><span class="fl-label">귀국</span><span class="fl-val" id="ret-qingdao">산동항공 TAO&#8594;ICN 18:30&#8594;21:10 직항</span></div>
     </div>
-    <div class="row"><span class="label">항공 (5인)</span><span class="val">&#8361;1,324,500</span></div>
+    <div class="row"><span class="label">항공 (5인)</span><span class="val" id="cair-qingdao">&#8361;1,324,500</span></div>
     <div class="row"><span class="label">숙박 (3룸 3박)</span><span class="val">&#8361;252,576</span></div>
     <div><span class="tag">산동항공 직항</span> <span class="tag">Jiumi Hutong 8.6점</span></div>
   </div>
@@ -160,15 +160,45 @@ tr:hover td { background: #f7fafc; }
   </div>
 </a>
 
-<a class="card" href="#detail-fukuoka">
-  <div class="card-header"><div class="card-city">후쿠오카 (일본)</div><div class="card-rank rank-4">4</div></div>
-  <div class="card-total">&#8361;2,726,698 <span>5인 총합</span></div>
+<!-- 오사카 — 기본 3위 (1,536,000 + 219,153 = 1,755,153) -->
+<a class="card" href="#detail-osaka" data-city="osaka">
+  <div class="card-header"><div class="card-city">오사카 (일본)</div><div class="card-rank rank-3" id="badge-osaka">3</div></div>
+  <div class="card-total" id="ctotal-osaka">&#8361;1,755,153 <span>5인 총합</span></div>
   <div class="card-body">
-    <div class="flight-block">
-      <div class="fl-row"><span class="fl-label">출국</span><span class="fl-val">제주항공 ICN&#8594;FUK 15:20&#8594;16:50 직항</span></div>
-      <div class="fl-row"><span class="fl-label">귀국</span><span class="fl-val">제주항공 FUK&#8594;ICN 13:00&#8594;14:30 직항</span></div>
+    <div class="flight-options" onclick="event.stopPropagation()">
+      <label class="fo-label"><input type="radio" name="fo-osaka" value="recommended" checked> 추천</label>
+      <label class="fo-label"><input type="radio" name="fo-osaka" value="cheapest"> 최저가</label>
+      <label class="fo-label"><input type="radio" name="fo-osaka" value="maxtime"> 관광시간</label>
     </div>
-    <div class="row"><span class="label">항공 (5인)</span><span class="val">&#8361;1,634,500</span></div>
+    <div class="flight-block">
+      <div class="fl-row"><span class="fl-label">출국</span><span class="fl-val" id="dep-osaka">에어부산 ICN&#8594;KIX 15:05&#8594;17:00 직항</span></div>
+      <div class="fl-row"><span class="fl-label">귀국</span><span class="fl-val" id="ret-osaka">에어부산 KIX&#8594;ICN 17:35&#8594;19:35 직항</span></div>
+    </div>
+    <div class="row"><span class="label">항공 (5인)</span><span class="val" id="cair-osaka">&#8361;1,536,000</span></div>
+    <div class="row"><span class="label">숙박 (3룸 3박)</span><span class="val">&#8361;219,153</span></div>
+    <div><span class="tag tag-green">숙박 최저가</span> <span class="tag">난바 도보권</span></div>
+  </div>
+  <div class="btn-links">
+    <a class="btn-link btn-sky" href="https://www.skyscanner.co.kr/transport/flights/sela/kix/261114/261117/?adultsv2=5&cabinclass=economy&childrenv2=&rtn=1" target="_blank" onclick="event.stopPropagation()">스카이스캐너</a>
+    <a class="btn-link btn-book" href="https://www.booking.com/searchresults.ko.html?ss=osaka&checkin=2026-11-14&checkout=2026-11-17&group_adults=5&no_rooms=3" target="_blank" onclick="event.stopPropagation()">부킹닷컴</a>
+  </div>
+</a>
+
+<!-- 후쿠오카 — 기본 4위 (1,735,000 + 1,092,198 = 2,827,198) -->
+<a class="card" href="#detail-fukuoka" data-city="fukuoka">
+  <div class="card-header"><div class="card-city">후쿠오카 (일본)</div><div class="card-rank rank-4" id="badge-fukuoka">4</div></div>
+  <div class="card-total" id="ctotal-fukuoka">&#8361;2,827,198 <span>5인 총합</span></div>
+  <div class="card-body">
+    <div class="flight-options" onclick="event.stopPropagation()">
+      <label class="fo-label"><input type="radio" name="fo-fukuoka" value="recommended" checked> 추천</label>
+      <label class="fo-label"><input type="radio" name="fo-fukuoka" value="cheapest"> 최저가</label>
+      <label class="fo-label"><input type="radio" name="fo-fukuoka" value="maxtime"> 관광시간</label>
+    </div>
+    <div class="flight-block">
+      <div class="fl-row"><span class="fl-label">출국</span><span class="fl-val" id="dep-fukuoka">진에어 ICN&#8594;FUK 17:25&#8594;18:50 직항</span></div>
+      <div class="fl-row"><span class="fl-label">귀국</span><span class="fl-val" id="ret-fukuoka">진에어 FUK&#8594;ICN 20:05&#8594;21:35 직항</span></div>
+    </div>
+    <div class="row"><span class="label">항공 (5인)</span><span class="val" id="cair-fukuoka">&#8361;1,735,000</span></div>
     <div class="row"><span class="label">숙박 (3룸 3박)</span><span class="val">&#8361;1,092,198</span></div>
     <div><span class="tag tag-red">숙박 최고가</span> <span class="tag">Nonette Hakata 9.6점</span></div>
   </div>
@@ -178,15 +208,21 @@ tr:hover td { background: #f7fafc; }
   </div>
 </a>
 
-<a class="card" href="#detail-taipei">
-  <div class="card-header"><div class="card-city">타이베이 (대만)</div><div class="card-rank rank-5">5</div></div>
-  <div class="card-total">&#8361;2,840,891 <span>5인 총합</span></div>
+<!-- 타이베이 — 기본 5위 (2,130,000 + 710,891 = 2,840,891) -->
+<a class="card" href="#detail-taipei" data-city="taipei">
+  <div class="card-header"><div class="card-city">타이베이 (대만)</div><div class="card-rank rank-5" id="badge-taipei">5</div></div>
+  <div class="card-total" id="ctotal-taipei">&#8361;2,840,891 <span>5인 총합</span></div>
   <div class="card-body">
-    <div class="flight-block">
-      <div class="fl-row"><span class="fl-label">출국</span><span class="fl-val">진에어 ICN&#8594;TPE 09:35&#8594;11:30 직항</span></div>
-      <div class="fl-row"><span class="fl-label">귀국</span><span class="fl-val">진에어 TPE&#8594;ICN 12:40&#8594;16:00 직항</span></div>
+    <div class="flight-options" onclick="event.stopPropagation()">
+      <label class="fo-label"><input type="radio" name="fo-taipei" value="recommended" checked> 추천</label>
+      <label class="fo-label"><input type="radio" name="fo-taipei" value="cheapest"> 최저가</label>
+      <label class="fo-label"><input type="radio" name="fo-taipei" value="maxtime"> 관광시간</label>
     </div>
-    <div class="row"><span class="label">항공 (5인)</span><span class="val">&#8361;2,130,000</span></div>
+    <div class="flight-block">
+      <div class="fl-row"><span class="fl-label">출국</span><span class="fl-val" id="dep-taipei">진에어 ICN&#8594;TPE 09:35&#8594;11:30 직항</span></div>
+      <div class="fl-row"><span class="fl-label">귀국</span><span class="fl-val" id="ret-taipei">진에어 TPE&#8594;ICN 12:40&#8594;16:00 직항</span></div>
+    </div>
+    <div class="row"><span class="label">항공 (5인)</span><span class="val" id="cair-taipei">&#8361;2,130,000</span></div>
     <div class="row"><span class="label">숙박 (3룸 3박)</span><span class="val">&#8361;710,891</span></div>
     <div><span class="tag tag-red">항공 최고가</span> <span class="tag">Lininn ZhongShan 8.1점</span></div>
   </div>
@@ -196,8 +232,8 @@ tr:hover td { background: #f7fafc; }
   </div>
 </a>
 
-<!-- 홍콩: 비활성화 — 맨 마지막 -->
-<div class="card-disabled">
+<!-- 홍콩: 비활성화 — 항상 맨 마지막 -->
+<div class="card-disabled" style="order:99;">
   <div class="card-overlay"></div>
   <div class="card-stamp">숙소부적격</div>
   <div class="card-header"><div class="card-city">홍콩</div><div class="card-rank rank-none">-</div></div>
@@ -224,13 +260,13 @@ tr:hover td { background: #f7fafc; }
   <thead>
     <tr><th>순위</th><th>도시</th><th>항공(1인)</th><th>항공(5인)</th><th>숙박(3박)</th><th>총합(5인)</th></tr>
   </thead>
-  <tbody>
-    <tr><td>1</td><td><strong>옌타이</strong></td><td class="best">&#8361;177,900</td><td>&#8361;889,500</td><td>&#8361;470,134</td><td class="total-col best">&#8361;1,359,634</td></tr>
-    <tr><td>2</td><td><strong>오사카</strong></td><td>&#8361;263,870</td><td>&#8361;1,319,350</td><td>&#8361;219,153</td><td class="total-col">&#8361;1,538,503</td></tr>
-    <tr><td>3</td><td><strong>청다오</strong></td><td>&#8361;264,900</td><td>&#8361;1,324,500</td><td>&#8361;252,576</td><td class="total-col">&#8361;1,577,076</td></tr>
-    <tr><td>4</td><td><strong>후쿠오카</strong></td><td>&#8361;326,900</td><td>&#8361;1,634,500</td><td>&#8361;1,092,198</td><td class="total-col">&#8361;2,726,698</td></tr>
-    <tr><td>5</td><td><strong>타이베이</strong></td><td>&#8361;426,000</td><td>&#8361;2,130,000</td><td>&#8361;710,891</td><td class="total-col">&#8361;2,840,891</td></tr>
-    <tr class="row-disabled"><td>-</td><td><strong>홍콩</strong></td><td>&#8361;337,300</td><td>&#8361;1,686,500</td><td>-</td><td class="total-col">- (제외)</td></tr>
+  <tbody id="compare-tbody">
+    <tr id="row-yantai"><td class="col-rank">1</td><td><strong>옌타이</strong></td><td class="col-air1">&#8361;177,900</td><td class="col-air5">&#8361;889,500</td><td>&#8361;470,134</td><td class="total-col col-total">&#8361;1,359,634</td></tr>
+    <tr id="row-qingdao"><td class="col-rank">2</td><td><strong>청다오</strong></td><td class="col-air1">&#8361;264,900</td><td class="col-air5">&#8361;1,324,500</td><td>&#8361;252,576</td><td class="total-col col-total">&#8361;1,577,076</td></tr>
+    <tr id="row-osaka"><td class="col-rank">3</td><td><strong>오사카</strong></td><td class="col-air1">&#8361;307,200</td><td class="col-air5">&#8361;1,536,000</td><td>&#8361;219,153</td><td class="total-col col-total">&#8361;1,755,153</td></tr>
+    <tr id="row-fukuoka"><td class="col-rank">4</td><td><strong>후쿠오카</strong></td><td class="col-air1">&#8361;347,000</td><td class="col-air5">&#8361;1,735,000</td><td>&#8361;1,092,198</td><td class="total-col col-total">&#8361;2,827,198</td></tr>
+    <tr id="row-taipei"><td class="col-rank">5</td><td><strong>타이베이</strong></td><td class="col-air1">&#8361;426,000</td><td class="col-air5">&#8361;2,130,000</td><td>&#8361;710,891</td><td class="total-col col-total">&#8361;2,840,891</td></tr>
+    <tr id="row-hongkong" class="row-disabled"><td>-</td><td><strong>홍콩</strong></td><td>&#8361;337,300</td><td>&#8361;1,686,500</td><td>-</td><td class="total-col">- (제외)</td></tr>
   </tbody>
 </table>
 <div class="notice">
@@ -248,7 +284,7 @@ tr:hover td { background: #f7fafc; }
 <div class="detail-header" style="background:#2d3748;">
   <a class="back-btn" href="#">&#8592; 목록으로</a>
   <div class="detail-city">1위 &mdash; 옌타이 (중국)</div>
-  <div class="detail-total">5인 총합 &#8361;1,359,634</div>
+  <div class="detail-total">5인 총합 &#8361;1,359,634 (추천비행편 기준)</div>
 </div>
 <div class="detail-body">
   <div class="detail-section">
@@ -295,72 +331,19 @@ tr:hover td { background: #f7fafc; }
 </div>
 </div>
 
-<!-- ===== DETAIL: 오사카 ===== -->
-<div id="detail-osaka" class="detail-page">
-<div class="detail-header" style="background:#553c9a;">
-  <a class="back-btn" href="#">&#8592; 목록으로</a>
-  <div class="detail-city">2위 &mdash; 오사카 (일본)</div>
-  <div class="detail-total">5인 총합 &#8361;1,538,503</div>
-</div>
-<div class="detail-body">
-  <div class="detail-section">
-    <h3>상세 비용</h3>
-    <table class="cost-table">
-      <tr><td class="ct-label">출국 항공편</td><td class="ct-val">제주항공 ICN&#8594;KIX 16:55&#8594;18:40 직항</td></tr>
-      <tr><td class="ct-label">귀국 항공편</td><td class="ct-val">제주항공 KIX&#8594;ICN 10:50&#8594;12:55 직항</td></tr>
-      <tr><td class="ct-label">항공 1인</td><td class="ct-val">&#8361;263,870</td></tr>
-      <tr><td class="ct-label">항공 5인 합계</td><td class="ct-val">&#8361;1,319,350</td></tr>
-      <tr><td class="ct-label">숙소</td><td class="ct-val">Namba Shinsaibashi Osaka Castle East (평점 8.3)</td></tr>
-      <tr><td class="ct-label">숙박 3룸 3박</td><td class="ct-val">&#8361;219,153</td></tr>
-      <tr><td class="ct-label">총합 (5인)</td><td class="ct-val">&#8361;1,538,503</td></tr>
-    </table>
-  </div>
-  <div class="detail-section">
-    <h3>추천 관광지</h3>
-    <div class="attraction-item"><h4>도톤보리 (道頓堀)</h4><p>오사카 최대 번화가. 글리코 간판, 다코야키, 라멘 골목. 저녁 네온 분위기 최고.</p></div>
-    <div class="attraction-item"><h4>오사카성 (大阪城)</h4><p>도요토미 히데요시가 축성. 천수각에서 오사카 전경 조망. 공원 단풍 시즌 (11월 절정).</p></div>
-    <div class="attraction-item"><h4>구로몬 이치바 시장</h4><p>오사카 부엌이라 불리는 재래시장. 해산물, 복어, 가이세키 식재료 다양. 저렴한 현지 먹거리.</p></div>
-    <div class="attraction-item"><h4>난바 파크스 / 신사이바시</h4><p>쇼핑 천국. 약 600m 상점가. 드러그스토어, 100엔숍, 로컬 패션 브랜드 밀집.</p></div>
-  </div>
-  <div class="detail-section">
-    <h3>추천 / 주의사항</h3>
-    <div class="pros-cons-grid">
-      <div class="pros-box"><h4>추천 이유</h4><ul>
-        <li>3룸 기준 숙박 최저가 &#8361;219,153 (3박)</li>
-        <li>11월 오사카 단풍 시즌 — 오사카성 공원 절경</li>
-        <li>먹거리 천국 — 다코야키, 오코노미야키, 라멘</li>
-        <li>숙소가 난바 인근으로 교통 편리</li>
-      </ul></div>
-      <div class="cons-box"><h4>주의 포인트</h4><ul>
-        <li>제주항공 — 수하물 정책 별도 확인 필요</li>
-        <li>귀국편 KIX 10:50 출발 — 마지막 날 아침 일찍 체크아웃</li>
-        <li>관광지 입장료 별도 (오사카성 600엔 등)</li>
-      </ul></div>
-    </div>
-  </div>
-  <div class="detail-section">
-    <h3>예약 링크</h3>
-    <div class="detail-links">
-      <a href="https://www.skyscanner.co.kr/transport/flights/sela/kix/261114/261117/?adultsv2=5&cabinclass=economy&childrenv2=&rtn=1" target="_blank" class="btn-link btn-sky">스카이스캐너</a>
-      <a href="https://www.booking.com/searchresults.ko.html?ss=osaka&checkin=2026-11-14&checkout=2026-11-17&group_adults=5&no_rooms=3" target="_blank" class="btn-link btn-book">부킹닷컴</a>
-    </div>
-  </div>
-</div>
-</div>
-
 <!-- ===== DETAIL: 청다오 ===== -->
 <div id="detail-qingdao" class="detail-page">
 <div class="detail-header" style="background:#1a365d;">
   <a class="back-btn" href="#">&#8592; 목록으로</a>
-  <div class="detail-city">3위 &mdash; 청다오 (중국)</div>
-  <div class="detail-total">5인 총합 &#8361;1,577,076</div>
+  <div class="detail-city">2위 &mdash; 청다오 (중국)</div>
+  <div class="detail-total">5인 총합 &#8361;1,577,076 (추천비행편 기준)</div>
 </div>
 <div class="detail-body">
   <div class="detail-section">
     <h3>상세 비용</h3>
     <table class="cost-table">
-      <tr><td class="ct-label">출국 항공편</td><td class="ct-val">산동항공(Shandong Airlines) ICN&#8594;TAO 14:00 직항</td></tr>
-      <tr><td class="ct-label">귀국 항공편</td><td class="ct-val">산동항공(Shandong Airlines) TAO&#8594;ICN 16:40 직항</td></tr>
+      <tr><td class="ct-label">출국 항공편</td><td class="ct-val">산동항공(Shandong Airlines) ICN&#8594;TAO 14:00&#8594;14:40 직항</td></tr>
+      <tr><td class="ct-label">귀국 항공편</td><td class="ct-val">산동항공(Shandong Airlines) TAO&#8594;ICN 18:30&#8594;21:10 직항</td></tr>
       <tr><td class="ct-label">항공 1인</td><td class="ct-val">&#8361;264,900</td></tr>
       <tr><td class="ct-label">항공 5인 합계</td><td class="ct-val">&#8361;1,324,500</td></tr>
       <tr><td class="ct-label">숙소</td><td class="ct-val">Jiumi Hutong Homestay (평점 8.6)</td></tr>
@@ -382,7 +365,7 @@ tr:hover td { background: #f7fafc; }
         <li>산동항공 직항 — 옌타이에 이어 두 번째 저렴한 항공</li>
         <li>Jiumi Hutong Homestay 평점 8.6 — 가성비 우수</li>
         <li>칭다오 맥주 + 해산물 문화 — 성인 만족도 높음</li>
-        <li>귀국 TAO 16:40 출발 — 마지막 날 여유 있는 이동</li>
+        <li>귀국 TAO 18:30 출발 — 마지막 날 여유 있는 이동</li>
       </ul></div>
       <div class="cons-box"><h4>주의 포인트</h4><ul>
         <li>중국어 장벽 — 영어 소통 어렵고 간판 한자 중심</li>
@@ -401,35 +384,55 @@ tr:hover td { background: #f7fafc; }
 </div>
 </div>
 
-<!-- ===== DETAIL: 홍콩 ===== -->
-<div id="detail-hongkong" class="detail-page">
-<div class="detail-header" style="background:#c05621;">
+<!-- ===== DETAIL: 오사카 ===== -->
+<div id="detail-osaka" class="detail-page">
+<div class="detail-header" style="background:#553c9a;">
   <a class="back-btn" href="#">&#8592; 목록으로</a>
-  <div class="detail-city">홍콩 — 숙소부적격 제외</div>
-  <div class="detail-total">순위 산정 제외</div>
+  <div class="detail-city">3위 &mdash; 오사카 (일본)</div>
+  <div class="detail-total">5인 총합 &#8361;1,755,153 (추천비행편 기준)</div>
 </div>
 <div class="detail-body">
-  <div class="detail-section" style="border: 2px solid #c53030;">
-    <h3 style="color:#c53030;">숙소부적격 — 순위에서 제외</h3>
-    <p style="font-size:0.85rem; color:#4a5568; line-height:1.8;">5인 3룸 기준 적합한 숙소를 확인하지 못해 이번 비교에서 제외하였습니다. 항공편 정보는 참고용으로만 제공합니다.</p>
-  </div>
   <div class="detail-section">
-    <h3>항공 정보 (참고)</h3>
+    <h3>상세 비용</h3>
     <table class="cost-table">
-      <tr><td class="ct-label">출국 항공편</td><td class="ct-val">홍콩익스프레스(HK Express) ICN&#8594;HKG 12:25&#8594;15:30 직항</td></tr>
-      <tr><td class="ct-label">귀국 항공편</td><td class="ct-val">홍콩익스프레스(HK Express) HKG&#8594;ICN 16:40&#8594;21:05 직항</td></tr>
-      <tr><td class="ct-label">항공 1인</td><td class="ct-val">&#8361;337,300</td></tr>
-      <tr><td class="ct-label">항공 5인 합계</td><td class="ct-val">&#8361;1,686,500</td></tr>
-      <tr><td class="ct-label">숙박</td><td class="ct-val">해당 없음 (숙소부적격)</td></tr>
-      <tr><td class="ct-label">총합</td><td class="ct-val">순위 제외</td></tr>
+      <tr><td class="ct-label">출국 항공편</td><td class="ct-val">에어부산 ICN&#8594;KIX 15:05&#8594;17:00 직항</td></tr>
+      <tr><td class="ct-label">귀국 항공편</td><td class="ct-val">에어부산 KIX&#8594;ICN 17:35&#8594;19:35 직항</td></tr>
+      <tr><td class="ct-label">항공 1인</td><td class="ct-val">&#8361;307,200</td></tr>
+      <tr><td class="ct-label">항공 5인 합계</td><td class="ct-val">&#8361;1,536,000</td></tr>
+      <tr><td class="ct-label">숙소</td><td class="ct-val">Namba Shinsaibashi Osaka Castle East (평점 8.3)</td></tr>
+      <tr><td class="ct-label">숙박 3룸 3박</td><td class="ct-val">&#8361;219,153</td></tr>
+      <tr><td class="ct-label">총합 (5인)</td><td class="ct-val">&#8361;1,755,153</td></tr>
     </table>
   </div>
   <div class="detail-section">
     <h3>추천 관광지</h3>
-    <div class="attraction-item"><h4>빅토리아 피크 (太平山頂)</h4><p>홍콩 최고의 야경 명소. 피크 트램 탑승 후 360도 스카이라인 전망. 맑은 날 필수.</p></div>
-    <div class="attraction-item"><h4>침사추이 해변 산책로</h4><p>구룡반도에서 홍콩섬 야경을 감상하는 1.7km 산책로. 스타의 거리 인접. 무료.</p></div>
-    <div class="attraction-item"><h4>몽콕 야시장 / 레이디스 마켓</h4><p>현지 기념품, 의류, 액세서리 집합지. 흥정 가능. 현지 먹거리 포장마차 즐비.</p></div>
-    <div class="attraction-item"><h4>란콰이퐁 (兰桂坊)</h4><p>홍콩 최대 나이트라이프 거리. 바, 레스토랑 밀집. 성인 저녁 코스로 최적.</p></div>
+    <div class="attraction-item"><h4>도톤보리 (道頓堀)</h4><p>오사카 최대 번화가. 글리코 간판, 다코야키, 라멘 골목. 저녁 네온 분위기 최고.</p></div>
+    <div class="attraction-item"><h4>오사카성 (大阪城)</h4><p>도요토미 히데요시가 축성. 천수각에서 오사카 전경 조망. 공원 단풍 시즌 (11월 절정).</p></div>
+    <div class="attraction-item"><h4>구로몬 이치바 시장</h4><p>오사카 부엌이라 불리는 재래시장. 해산물, 복어, 가이세키 식재료 다양. 저렴한 현지 먹거리.</p></div>
+    <div class="attraction-item"><h4>난바 파크스 / 신사이바시</h4><p>쇼핑 천국. 약 600m 상점가. 드러그스토어, 100엔숍, 로컬 패션 브랜드 밀집.</p></div>
+  </div>
+  <div class="detail-section">
+    <h3>추천 / 주의사항</h3>
+    <div class="pros-cons-grid">
+      <div class="pros-box"><h4>추천 이유</h4><ul>
+        <li>3룸 기준 숙박 최저가 &#8361;219,153 (3박)</li>
+        <li>11월 오사카 단풍 시즌 — 오사카성 공원 절경</li>
+        <li>먹거리 천국 — 다코야키, 오코노미야키, 라멘</li>
+        <li>숙소가 난바 인근으로 교통 편리</li>
+      </ul></div>
+      <div class="cons-box"><h4>주의 포인트</h4><ul>
+        <li>최저가 선택시 제주항공 KIX 10:50 출발 — 마지막 날 아침 일찍 체크아웃</li>
+        <li>관광지 입장료 별도 (오사카성 600엔 등)</li>
+        <li>수하물 정책 항공사별 별도 확인 필요</li>
+      </ul></div>
+    </div>
+  </div>
+  <div class="detail-section">
+    <h3>예약 링크</h3>
+    <div class="detail-links">
+      <a href="https://www.skyscanner.co.kr/transport/flights/sela/kix/261114/261117/?adultsv2=5&cabinclass=economy&childrenv2=&rtn=1" target="_blank" class="btn-link btn-sky">스카이스캐너</a>
+      <a href="https://www.booking.com/searchresults.ko.html?ss=osaka&checkin=2026-11-14&checkout=2026-11-17&group_adults=5&no_rooms=3" target="_blank" class="btn-link btn-book">부킹닷컴</a>
+    </div>
   </div>
 </div>
 </div>
@@ -439,19 +442,19 @@ tr:hover td { background: #f7fafc; }
 <div class="detail-header" style="background:#276749;">
   <a class="back-btn" href="#">&#8592; 목록으로</a>
   <div class="detail-city">4위 &mdash; 후쿠오카 (일본)</div>
-  <div class="detail-total">5인 총합 &#8361;2,726,698</div>
+  <div class="detail-total">5인 총합 &#8361;2,827,198 (추천비행편 기준)</div>
 </div>
 <div class="detail-body">
   <div class="detail-section">
     <h3>상세 비용</h3>
     <table class="cost-table">
-      <tr><td class="ct-label">출국 항공편</td><td class="ct-val">제주항공 ICN&#8594;FUK 15:20&#8594;16:50 직항</td></tr>
-      <tr><td class="ct-label">귀국 항공편</td><td class="ct-val">제주항공 FUK&#8594;ICN 13:00&#8594;14:30 직항</td></tr>
-      <tr><td class="ct-label">항공 1인</td><td class="ct-val">&#8361;326,900</td></tr>
-      <tr><td class="ct-label">항공 5인 합계</td><td class="ct-val">&#8361;1,634,500</td></tr>
+      <tr><td class="ct-label">출국 항공편</td><td class="ct-val">진에어(JinAir) ICN&#8594;FUK 17:25&#8594;18:50 직항</td></tr>
+      <tr><td class="ct-label">귀국 항공편</td><td class="ct-val">진에어(JinAir) FUK&#8594;ICN 20:05&#8594;21:35 직항</td></tr>
+      <tr><td class="ct-label">항공 1인</td><td class="ct-val">&#8361;347,000</td></tr>
+      <tr><td class="ct-label">항공 5인 합계</td><td class="ct-val">&#8361;1,735,000</td></tr>
       <tr><td class="ct-label">숙소</td><td class="ct-val">Nonette Hakata Haruyoshi (평점 9.6)</td></tr>
       <tr><td class="ct-label">숙박 3룸 3박</td><td class="ct-val">&#8361;1,092,198</td></tr>
-      <tr><td class="ct-label">총합 (5인)</td><td class="ct-val">&#8361;2,726,698</td></tr>
+      <tr><td class="ct-label">총합 (5인)</td><td class="ct-val">&#8361;2,827,198</td></tr>
     </table>
   </div>
   <div class="detail-section">
@@ -467,12 +470,12 @@ tr:hover td { background: #f7fafc; }
       <div class="pros-box"><h4>추천 이유</h4><ul>
         <li>나카스 야타이 — 성인 야간 미식 최고 명소</li>
         <li>하카타 라멘 + 모츠나베 + 포장마차 문화</li>
-        <li>귀국 ICN 14:30 도착 — 여유로운 귀국</li>
+        <li>귀국 FUK 20:05 출발 — 마지막 날 저녁까지 활용 가능</li>
         <li>관광·쇼핑·미식 삼박자</li>
       </ul></div>
       <div class="cons-box"><h4>주의 포인트</h4><ul>
         <li>숙박비 5개 도시 중 최고가 (&#8361;1,092,198)</li>
-        <li>출국 15:20 — 첫째 날 늦은 오후 도착</li>
+        <li>출국 17:25 — 첫째 날 저녁 도착으로 관광 시간 제한</li>
       </ul></div>
     </div>
   </div>
@@ -491,7 +494,7 @@ tr:hover td { background: #f7fafc; }
 <div class="detail-header" style="background:#702459;">
   <a class="back-btn" href="#">&#8592; 목록으로</a>
   <div class="detail-city">5위 &mdash; 타이베이 (대만)</div>
-  <div class="detail-total">5인 총합 &#8361;2,840,891</div>
+  <div class="detail-total">5인 총합 &#8361;2,840,891 (추천비행편 기준)</div>
 </div>
 <div class="detail-body">
   <div class="detail-section">
@@ -538,16 +541,184 @@ tr:hover td { background: #f7fafc; }
 </div>
 </div>
 
+<!-- ===== DETAIL: 홍콩 ===== -->
+<div id="detail-hongkong" class="detail-page">
+<div class="detail-header" style="background:#c05621;">
+  <a class="back-btn" href="#">&#8592; 목록으로</a>
+  <div class="detail-city">홍콩 — 숙소부적격 제외</div>
+  <div class="detail-total">순위 산정 제외</div>
+</div>
+<div class="detail-body">
+  <div class="detail-section" style="border: 2px solid #c53030;">
+    <h3 style="color:#c53030;">숙소부적격 — 순위에서 제외</h3>
+    <p style="font-size:0.85rem; color:#4a5568; line-height:1.8;">5인 3룸 기준 적합한 숙소를 확인하지 못해 이번 비교에서 제외하였습니다. 항공편 정보는 참고용으로만 제공합니다.</p>
+  </div>
+  <div class="detail-section">
+    <h3>항공 정보 (참고)</h3>
+    <table class="cost-table">
+      <tr><td class="ct-label">출국 항공편</td><td class="ct-val">홍콩익스프레스(HK Express) ICN&#8594;HKG 12:25&#8594;15:30 직항</td></tr>
+      <tr><td class="ct-label">귀국 항공편</td><td class="ct-val">홍콩익스프레스(HK Express) HKG&#8594;ICN 16:40&#8594;21:05 직항</td></tr>
+      <tr><td class="ct-label">항공 1인</td><td class="ct-val">&#8361;337,300</td></tr>
+      <tr><td class="ct-label">항공 5인 합계</td><td class="ct-val">&#8361;1,686,500</td></tr>
+      <tr><td class="ct-label">숙박</td><td class="ct-val">해당 없음 (숙소부적격)</td></tr>
+      <tr><td class="ct-label">총합</td><td class="ct-val">순위 제외</td></tr>
+    </table>
+  </div>
+  <div class="detail-section">
+    <h3>추천 관광지</h3>
+    <div class="attraction-item"><h4>빅토리아 피크 (太平山頂)</h4><p>홍콩 최고의 야경 명소. 피크 트램 탑승 후 360도 스카이라인 전망. 맑은 날 필수.</p></div>
+    <div class="attraction-item"><h4>침사추이 해변 산책로</h4><p>구룡반도에서 홍콩섬 야경을 감상하는 1.7km 산책로. 스타의 거리 인접. 무료.</p></div>
+    <div class="attraction-item"><h4>몽콕 야시장 / 레이디스 마켓</h4><p>현지 기념품, 의류, 액세서리 집합지. 흥정 가능. 현지 먹거리 포장마차 즐비.</p></div>
+    <div class="attraction-item"><h4>란콰이퐁 (兰桂坊)</h4><p>홍콩 최대 나이트라이프 거리. 바, 레스토랑 밀집. 성인 저녁 코스로 최적.</p></div>
+  </div>
+</div>
+</div>
+
 <script>
+/* ===== 항공편 데이터 ===== */
+var ACCOM = { yantai:470134, osaka:219153, qingdao:252576, fukuoka:1092198, taipei:710891 };
+
+var FLIGHTS = {
+  yantai: {
+    recommended: { dep:'진에어 ICN→YNT 15:25→16:10 직항', ret:'진에어 YNT→ICN 17:10→19:40 직항', p5:889500 },
+    cheapest:    { dep:'진에어 ICN→YNT 15:25→16:10 직항', ret:'진에어 YNT→ICN 17:10→19:40 직항', p5:889500 },
+    maxtime:     { dep:'중국동방항공 ICN→YNT 11:55→12:25 직항', ret:'중국동방항공 YNT→ICN 18:50→21:10 직항', p5:1217000 }
+  },
+  qingdao: {
+    recommended: { dep:'산동항공 ICN→TAO 14:00→14:40 직항', ret:'산동항공 TAO→ICN 18:30→21:10 직항', p5:1324500 },
+    cheapest:    { dep:'산동항공 ICN→TAO 14:00→14:40 직항', ret:'산동항공 TAO→ICN 16:40→19:20 직항', p5:1324500 },
+    maxtime:     { dep:'산동항공 ICN→TAO 14:00→14:40 직항', ret:'산동항공 TAO→ICN 18:30→21:10 직항', p5:1324500 }
+  },
+  osaka: {
+    recommended: { dep:'에어부산 ICN→KIX 15:05→17:00 직항', ret:'에어부산 KIX→ICN 17:35→19:35 직항', p5:1536000 },
+    cheapest:    { dep:'제주항공 ICN→KIX 16:55→18:40 직항', ret:'제주항공 KIX→ICN 10:50→12:55 직항', p5:1319350 },
+    maxtime:     { dep:'에어부산 ICN→KIX 15:05→17:00 직항', ret:'에어부산 KIX→ICN 17:35→19:35 직항', p5:1536000 }
+  },
+  fukuoka: {
+    recommended: { dep:'진에어 ICN→FUK 17:25→18:50 직항', ret:'진에어 FUK→ICN 20:05→21:35 직항', p5:1735000 },
+    cheapest:    { dep:'제주항공 ICN→FUK 15:20→16:50 직항', ret:'제주항공 FUK→ICN 13:00→14:30 직항', p5:1634500 },
+    maxtime:     { dep:'진에어 ICN→FUK 17:25→18:50 직항', ret:'진에어 FUK→ICN 20:05→21:35 직항', p5:1735000 }
+  },
+  taipei: {
+    recommended: { dep:'진에어 ICN→TPE 09:35→11:30 직항', ret:'진에어 TPE→ICN 12:40→16:00 직항', p5:2130000 },
+    cheapest:    { dep:'진에어 ICN→TPE 09:35→11:30 직항', ret:'진에어 TPE→ICN 12:40→16:00 직항', p5:2130000 },
+    maxtime:     { dep:'중화항공 ICN→TPE 12:30→14:20 직항', ret:'중화항공 TPE→ICN 15:40→19:15 직항', p5:2411500 }
+  }
+};
+
+/* 현재 상태 */
+var STATE = {};
+Object.keys(FLIGHTS).forEach(function(city) {
+  var opt = FLIGHTS[city].recommended;
+  STATE[city] = { p5: opt.p5, total: opt.p5 + ACCOM[city] };
+});
+
+function krw(n) {
+  return '₩' + n.toLocaleString('ko-KR');
+}
+
+function updateCardDisplay(city, optKey) {
+  var opt = FLIGHTS[city][optKey];
+  document.getElementById('dep-' + city).textContent = opt.dep;
+  document.getElementById('ret-' + city).textContent = opt.ret;
+  document.getElementById('cair-' + city).textContent = krw(opt.p5);
+  var total = opt.p5 + ACCOM[city];
+  document.getElementById('ctotal-' + city).innerHTML = krw(total) + ' <span>5인 총합</span>';
+  STATE[city].p5 = opt.p5;
+  STATE[city].total = total;
+}
+
+function sortedCities() {
+  return Object.keys(FLIGHTS).sort(function(a, b) { return STATE[a].total - STATE[b].total; });
+}
+
+var RANK_CLASSES = ['rank-1','rank-2','rank-3','rank-4','rank-5'];
+
+function reorderAndAnimate() {
+  var container = document.querySelector('.cards');
+  var cities = Object.keys(FLIGHTS);
+  var cards = cities.map(function(c) { return container.querySelector('[data-city="' + c + '"]'); });
+
+  /* FLIP - First: 현재 위치 기록 */
+  var firstRects = {};
+  cards.forEach(function(card) {
+    firstRects[card.dataset.city] = card.getBoundingClientRect();
+  });
+
+  /* 정렬 후 order 및 배지 업데이트 */
+  var sorted = sortedCities();
+  sorted.forEach(function(city, i) {
+    var card = container.querySelector('[data-city="' + city + '"]');
+    card.style.order = i;
+    var badge = card.querySelector('.card-rank');
+    badge.textContent = i + 1;
+    badge.className = 'card-rank ' + (RANK_CLASSES[i] || 'rank-5');
+  });
+
+  /* 테이블 업데이트 */
+  updateTable(sorted);
+
+  /* FLIP - Last + Invert + Play */
+  cards.forEach(function(card) {
+    var city = card.dataset.city;
+    var last = card.getBoundingClientRect();
+    var dx = firstRects[city].left - last.left;
+    var dy = firstRects[city].top - last.top;
+    if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) {
+      card.style.transition = 'none';
+      card.style.transform = 'translate(' + dx + 'px,' + dy + 'px)';
+      requestAnimationFrame(function() {
+        requestAnimationFrame(function() {
+          card.style.transition = 'transform 0.38s cubic-bezier(.4,0,.2,1)';
+          card.style.transform = '';
+          card.addEventListener('transitionend', function cleanup() {
+            card.style.transition = '';
+            card.removeEventListener('transitionend', cleanup);
+          });
+        });
+      });
+    }
+  });
+}
+
+function updateTable(sorted) {
+  var tbody = document.getElementById('compare-tbody');
+  if (!tbody) return;
+  sorted.forEach(function(city, i) {
+    var row = document.getElementById('row-' + city);
+    if (!row) return;
+    row.querySelector('.col-rank').textContent = i + 1;
+    row.querySelector('.col-air1').textContent = krw(Math.round(STATE[city].p5 / 5));
+    row.querySelector('.col-air5').textContent = krw(STATE[city].p5);
+    row.querySelector('.col-total').textContent = krw(STATE[city].total);
+    tbody.appendChild(row);
+  });
+  var hkRow = document.getElementById('row-hongkong');
+  if (hkRow) tbody.appendChild(hkRow);
+}
+
+/* 라디오 버튼 이벤트 */
+document.querySelectorAll('.flight-options input[type="radio"]').forEach(function(radio) {
+  radio.addEventListener('change', function() {
+    if (!this.checked) return;
+    var city = this.name.replace('fo-', '');
+    updateCardDisplay(city, this.value);
+    reorderAndAnimate();
+  });
+});
+
+/* 초기 정렬 실행 */
+reorderAndAnimate();
+
+/* ===== 라우팅 ===== */
 function route() {
-  const hash = location.hash;
+  var hash = location.hash;
   document.getElementById('main-view').style.display = 'none';
-  const pages = document.querySelectorAll('.detail-page');
-  pages.forEach(p => p.style.display = 'none');
+  document.querySelectorAll('.detail-page').forEach(function(p) { p.style.display = 'none'; });
   if (!hash || hash === '#') {
     document.getElementById('main-view').style.display = 'block';
   } else {
-    const target = document.getElementById(hash.slice(1));
+    var target = document.getElementById(hash.slice(1));
     if (target) {
       target.style.display = 'block';
       window.scrollTo(0, 0);
@@ -558,12 +729,12 @@ function route() {
 }
 window.addEventListener('hashchange', route);
 route();
-document.querySelectorAll('.back-btn').forEach(btn => {
+document.querySelectorAll('.back-btn').forEach(function(btn) {
   btn.addEventListener('click', function(e) {
     e.preventDefault();
     location.hash = '';
     document.getElementById('main-view').style.display = 'block';
-    document.querySelectorAll('.detail-page').forEach(p => p.style.display = 'none');
+    document.querySelectorAll('.detail-page').forEach(function(p) { p.style.display = 'none'; });
     window.scrollTo(0, 0);
   });
 });
