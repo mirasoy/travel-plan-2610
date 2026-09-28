@@ -223,7 +223,15 @@ header .sub{font-size:0.82rem;opacity:0.85;margin-bottom:14px;}
   font-size: 13px;
   color: #718096;
 }
-</style>
+.hotel-rank{position:absolute;top:10px;left:12px;background:rgba(0,0,0,0.72);color:#fff;font-size:1rem;font-weight:900;padding:4px 12px;border-radius:20px;z-index:2;}
+.hotel-tag-row{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0 4px;}
+.tag-pos{background:#e6f4ea;color:#1b6f38;font-size:0.7rem;font-weight:700;padding:3px 9px;border-radius:12px;}
+.tag-neg{background:#fff3e0;color:#b45309;font-size:0.7rem;font-weight:700;padding:3px 9px;border-radius:12px;}
+.score-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;background:#f7f8fa;border-radius:8px;padding:8px 6px;margin:8px 0 6px;}
+.score-cell{text-align:center;}
+.score-lbl{display:block;font-size:0.62rem;color:#888;font-weight:600;margin-bottom:1px;}
+.score-val{display:block;font-size:0.95rem;font-weight:800;color:#1a202c;}
+.score-total{text-align:center;font-size:0.75rem;font-weight:800;color:#e05c2f;padding:0 0 4px;}</style>
 </head>
 <body>
 
@@ -283,170 +291,79 @@ header .sub{font-size:0.82rem;opacity:0.85;margin-bottom:14px;}
 
   <!-- SECTION 2: HOTELS -->
   <div class="section-label" style="margin-top:32px;">숙소</div>
-  <div class="section-title">숙소 후보 — 가격 오름차순 (카드 클릭시 상세)</div>
+  <div class="section-title">숙소 후보 TOP 3 (카드 클릭시 상세)</div>
 
   <div class="hotel-grid">
 
-    <!-- B1. Triple Tiger Inn — 498,097원 -->
-    <div class="hotel-card" onclick="openModal('m1')">
-      <div class="hotel-thumb">
-        <img src="hotels/triple-tiger-1.jpg" alt="Triple Tiger Inn" onerror="imgErr(this,'T')">
-      </div>
-      <div class="hotel-color c1"></div>
-      <div class="hotel-body">
-        <span class="platform-badge booking">Booking.com</span>
-        <div class="hotel-name">Taipei Triple Tiger Inn</div>
-        <div class="hotel-loc">완후아 지구 (시먼딩) | 중심부 1.3km</div>
-        <div class="hotel-rating-row">
-          <span class="hotel-score">8.2</span>
-          <span class="hotel-reviews">매우 좋음 | 1,237개 리뷰</span>
-        </div>
-        <div class="hotel-price">498,097원</div>
-        <div class="hotel-price-sub">5인 3박 총합 (세금 포함)</div>
-        <div class="hotel-feature">패밀리 스위트 1실 &mdash; 5인 한 공간, 무료취소</div>
-        <a href="https://www.booking.com/hotel/tw/triple-tiger-taipei.ko.html?checkin=2026-11-14&checkout=2026-11-17&group_adults=5&no_rooms=1" target="_blank" class="btn-bcom" onclick="event.stopPropagation()">Booking.com에서 보기</a>
-      </div>
-    </div>
-
-    <!-- A1. FC513 아파트 — 640,152원 (1박 213,384원) -->
-    <div class="hotel-card" onclick="openModal('ma1')">
-      <div class="hotel-thumb"><img src="hotels/fc513-1.jpg" style="width:100%;height:180px;object-fit:cover;border-radius:12px 12px 0 0;display:block;"></div>
-      <div class="hotel-color c6"></div>
-      <div class="hotel-body">
-        <span class="platform-badge airbnb">Airbnb</span>
-        <div class="hotel-name">FC513 아파트</div>
-        <div class="hotel-loc">충효푸싱 | MRT 충효푸싱역 도보 3분</div>
-        <div class="hotel-rating-row">
-          <span class="hotel-score">4.92</span>
-          <span class="hotel-reviews">12개 리뷰</span>
-        </div>
-        <div class="hotel-price">640,152원</div>
-        <div class="hotel-price-sub">3박 총합 (1박 약 213,384원) — 욕실 1개 공용</div>
-        <div class="hotel-feature">침실 3 / 욕실 1 / 침대 4 &mdash; MRT 충효푸싱역 도보 3분</div>
-        <a href="https://www.airbnb.co.kr/rooms/1670950355394971873" target="_blank" class="btn-airbnb" onclick="event.stopPropagation()">Airbnb에서 보기</a>
-      </div>
-    </div>
-
-    <!-- A2. 新起里 아파트 — 671,676원 (1박 223,892원) -->
+    <!-- 1위: 新起里 아파트 (ma2) -->
     <div class="hotel-card" onclick="openModal('ma2')">
-      <div class="hotel-thumb"><img src="hotels/xinqili-1.jpg" style="width:100%;height:180px;object-fit:cover;border-radius:12px 12px 0 0;display:block;"></div>
+      <div class="hotel-rank">1위</div>
+      <div class="hotel-thumb"><img src="hotels/xinqili-1.jpg" style="width:100%;height:180px;object-fit:cover;border-radius:12px 12px 0 0;display:block;" onerror="imgErr(this,'X')"></div>
       <div class="hotel-color c7"></div>
       <div class="hotel-body">
         <span class="platform-badge airbnb">Airbnb</span>
+        <div class="hotel-tag-row"><span class="tag-pos">종합1위</span><span class="tag-neg">3층 계단사용</span></div>
         <div class="hotel-name">新起里 아파트</div>
         <div class="hotel-loc">시먼딩 | MRT 시먼역 도보 3분</div>
-        <div class="hotel-rating-row">
-          <span class="hotel-score">4.89</span>
-          <span class="hotel-reviews">75개 리뷰</span>
+        <div class="hotel-rating-row"><span class="hotel-score">4.89</span><span class="hotel-reviews">75개 리뷰</span></div>
+        <div class="score-grid">
+          <div class="score-cell"><span class="score-lbl">위치</span><span class="score-val">8.33</span></div>
+          <div class="score-cell"><span class="score-lbl">시설</span><span class="score-val">8.00</span></div>
+          <div class="score-cell"><span class="score-lbl">금액</span><span class="score-val">10.00</span></div>
         </div>
+        <div class="score-total">종합 89.3점</div>
         <div class="hotel-price">671,676원</div>
         <div class="hotel-price-sub">3박 총합 (1박 약 223,892원)</div>
-        <div class="hotel-feature">침실 2 / 독립욕실 2 / 침대 4 &mdash; 시먼역 도보 3분</div>
+        <div class="hotel-feature">침실 2 / 독립욕실 2 / 침대 4 — 시먼역 도보 3분</div>
         <a href="https://www.airbnb.co.kr/rooms/1170836700951503193" target="_blank" class="btn-airbnb" onclick="event.stopPropagation()">Airbnb에서 보기</a>
       </div>
     </div>
 
-    <!-- A3. 敦安里 아파트 — 868,587원 (1박 289,529원) -->
-    <div class="hotel-card" onclick="openModal('ma3')">
-      <div class="hotel-thumb"><img src="hotels/dunli-1.jpg" style="width:100%;height:180px;object-fit:cover;border-radius:12px 12px 0 0;display:block;"></div>
-      <div class="hotel-color c8"></div>
-      <div class="hotel-body">
-        <span class="platform-badge airbnb">Airbnb</span>
-        <div class="hotel-name">敦安里 아파트</div>
-        <div class="hotel-loc">신이/타이베이101 | MRT 신이안허역 도보 5분</div>
-        <div class="hotel-rating-row">
-          <span class="hotel-score">4.96</span>
-          <span class="hotel-reviews">48개 리뷰</span>
-        </div>
-        <div class="hotel-price">868,587원</div>
-        <div class="hotel-price-sub">3박 총합 (1박 약 289,529원)</div>
-        <div class="hotel-feature">침실 3 / 욕실 2 / 침대 4 &mdash; 101 타워 인근, 부모님 분리 가능</div>
-        <a href="https://www.airbnb.co.kr/rooms/1475162054068250207" target="_blank" class="btn-airbnb" onclick="event.stopPropagation()">Airbnb에서 보기</a>
-      </div>
-    </div>
-
-    <!-- B2. Mayer Inn — 905,492원 -->
-    <div class="hotel-card" onclick="openModal('m2')">
-      <div class="hotel-thumb">
-        <img src="hotels/mayer-1.jpg" alt="Mayer Inn" onerror="imgErr(this,'M')">
-      </div>
-      <div class="hotel-color c2"></div>
-      <div class="hotel-body">
-        <span class="platform-badge booking">Booking.com</span>
-        <div class="hotel-name">Mayer Inn</div>
-        <div class="hotel-loc">중정구 | 타이베이역 200m | 위치점수 9.3</div>
-        <div class="hotel-rating-row">
-          <span class="hotel-score">8.0</span>
-          <span class="hotel-reviews">매우 좋음 | 4,094개 리뷰</span>
-        </div>
-        <div class="hotel-price">905,492원</div>
-        <div class="hotel-price-sub">5인 3박 총합 (세금 포함)</div>
-        <div class="hotel-feature">이코노미룸 1실 (더블침대 4개) &mdash; 타이베이역 도보 200m</div>
-        <a href="https://www.booking.com/hotel/tw/mayer-innmei-ya-shang-lu.ko.html?checkin=2026-11-14&checkout=2026-11-17&group_adults=5&no_rooms=1" target="_blank" class="btn-bcom" onclick="event.stopPropagation()">Booking.com에서 보기</a>
-      </div>
-    </div>
-
-    <!-- B3. Tango Inn — 945,936원 (추천) -->
+    <!-- 2위: Tango Inn Taipei Kaifong (m3) -->
     <div class="hotel-card" onclick="openModal('m3')">
-      <div class="hotel-badge">추천</div>
-      <div class="hotel-thumb">
-        <img src="hotels/tango-1.jpg" alt="Tango Inn" onerror="imgErr(this,'T')">
-      </div>
+      <div class="hotel-rank">2위</div>
+      <div class="hotel-thumb"><img src="hotels/tango-1.jpg" style="width:100%;height:180px;object-fit:cover;border-radius:12px 12px 0 0;display:block;" onerror="imgErr(this,'T')"></div>
       <div class="hotel-color c3"></div>
       <div class="hotel-body">
         <span class="platform-badge booking">Booking.com</span>
+        <div class="hotel-tag-row"><span class="tag-pos">최고동선</span><span class="tag-neg">1인 소파베드</span></div>
         <div class="hotel-name">Tango Inn Taipei Kaifong</div>
         <div class="hotel-loc">중정구 | 타이베이역 도보 500m | 위치점수 9.3</div>
-        <div class="hotel-rating-row">
-          <span class="hotel-score">8.7</span>
-          <span class="hotel-reviews">우수함 | 1,068개 리뷰</span>
+        <div class="hotel-rating-row"><span class="hotel-score">8.7</span><span class="hotel-reviews">우수함 | 1,068개 리뷰</span></div>
+        <div class="score-grid">
+          <div class="score-cell"><span class="score-lbl">위치</span><span class="score-val">9.67</span></div>
+          <div class="score-cell"><span class="score-lbl">시설</span><span class="score-val">8.00</span></div>
+          <div class="score-cell"><span class="score-lbl">금액</span><span class="score-val">7.10</span></div>
         </div>
+        <div class="score-total">종합 83.1점</div>
         <div class="hotel-price">945,936원</div>
         <div class="hotel-price-sub">5인 3박 총합 (세금 포함)</div>
-        <div class="hotel-feature">객실 2개 &mdash; 부모·자녀 분리, 무료취소, 최고 평점</div>
+        <div class="hotel-feature">객실 2개 — 부모자녀 분리, 무료취식, 최고 평점</div>
         <a href="https://www.booking.com/hotel/tw/tian-yun-lu-zhan-tai-bei-kai-feng.ko.html?checkin=2026-11-14&checkout=2026-11-17&group_adults=5&no_rooms=1" target="_blank" class="btn-bcom" onclick="event.stopPropagation()">Booking.com에서 보기</a>
       </div>
     </div>
 
-    <!-- B4. Brown House — 1,101,657원 -->
-    <div class="hotel-card" onclick="openModal('m4')">
-      <div class="hotel-thumb">
-        <img src="hotels/brown-1.jpg" alt="Brown House" onerror="imgErr(this,'B')">
-      </div>
-      <div class="hotel-color c4"></div>
+    <!-- 3위: FC513 아파트 (ma1) -->
+    <div class="hotel-card" onclick="openModal('ma1')">
+      <div class="hotel-rank">3위</div>
+      <div class="hotel-thumb"><img src="hotels/fc513-1.jpg" style="width:100%;height:180px;object-fit:cover;border-radius:12px 12px 0 0;display:block;" onerror="imgErr(this,'F')"></div>
+      <div class="hotel-color c6"></div>
       <div class="hotel-body">
-        <span class="platform-badge booking">Booking.com</span>
-        <div class="hotel-name">Brown House Hotel Taipei Main Station</div>
-        <div class="hotel-loc">중정구 | 타이베이역 200m | 위치점수 9.6</div>
-        <div class="hotel-rating-row">
-          <span class="hotel-score">8.8</span>
-          <span class="hotel-reviews">우수함 | 2,070개 리뷰</span>
+        <span class="platform-badge airbnb">Airbnb</span>
+        <div class="hotel-tag-row"><span class="tag-pos">최저가</span><span class="tag-neg">욕실 1개</span></div>
+        <div class="hotel-name">FC513 아파트</div>
+        <div class="hotel-loc">충효푸싱 | MRT 충효푸싱역 도보 3분</div>
+        <div class="hotel-rating-row"><span class="hotel-score">4.92</span><span class="hotel-reviews">12개 리뷰</span></div>
+        <div class="score-grid">
+          <div class="score-cell"><span class="score-lbl">위치</span><span class="score-val">7.83</span></div>
+          <div class="score-cell"><span class="score-lbl">시설</span><span class="score-val">5.20</span></div>
+          <div class="score-cell"><span class="score-lbl">금액</span><span class="score-val">10.00</span></div>
         </div>
-        <div class="hotel-price">1,101,657원</div>
-        <div class="hotel-price-sub">5인 3박 총합 (세금 포함)</div>
-        <div class="hotel-feature">객실 2개 &mdash; 최고 평점 8.8, 타이베이역 200m</div>
-        <a href="https://www.booking.com/hotel/tw/cha-se-bu-wu-zhan-qian-lu-dian.ko.html?checkin=2026-11-14&checkout=2026-11-17&group_adults=5&no_rooms=1" target="_blank" class="btn-bcom" onclick="event.stopPropagation()">Booking.com에서 보기</a>
-      </div>
-    </div>
-
-    <!-- B5. Urban Abode — 1,300,198원 -->
-    <div class="hotel-card" onclick="openModal('m5')">
-      <div class="hotel-thumb">
-        <img src="hotels/urban-1.jpg" alt="Urban Abode" onerror="imgErr(this,'U')">
-      </div>
-      <div class="hotel-color c5"></div>
-      <div class="hotel-body">
-        <span class="platform-badge booking">Booking.com</span>
-        <div class="hotel-name">Urban Abode Apartment 1 (所在行旅1館)</div>
-        <div class="hotel-loc">중정구 | 타이베이역 150m | 위치점수 9.6</div>
-        <div class="hotel-rating-row">
-          <span class="hotel-score">8.5</span>
-          <span class="hotel-reviews">매우 좋음 | 945개 리뷰</span>
-        </div>
-        <div class="hotel-price">1,300,198원</div>
-        <div class="hotel-price-sub">5인 3박 총합 (세금 포함)</div>
-        <div class="hotel-feature">아파트 단독 &mdash; 68m², 침실2·욕실2, 침대5개</div>
-        <a href="https://www.booking.com/hotel/tw/suo-zai-xing-lu.ko.html?checkin=2026-11-14&checkout=2026-11-17&group_adults=5&no_rooms=1" target="_blank" class="btn-bcom" onclick="event.stopPropagation()">Booking.com에서 보기</a>
+        <div class="score-total">종합 81.7점</div>
+        <div class="hotel-price">640,152원</div>
+        <div class="hotel-price-sub">3박 총합 (1박 약 213,384원)</div>
+        <div class="hotel-feature">침실 3 / 욕실 1개 (공용) / 침대 4 — MRT 충효푸싱역 도보 3분</div>
+        <a href="https://www.airbnb.co.kr/rooms/1670950355394971873" target="_blank" class="btn-airbnb" onclick="event.stopPropagation()">Airbnb에서 보기</a>
       </div>
     </div>
 
@@ -709,10 +626,7 @@ header .sub{font-size:0.82rem;opacity:0.85;margin-bottom:14px;}
   </div>
   <div class="modal-body">
     <div class="modal-photo-area">
-      <div class="modal-photo-ph">
-        <span>사진 준비 중</span>
-        <span style="font-size:0.7rem;">Airbnb에서 확인 가능</span>
-      </div>
+      <div class="modal-photos"><img src="hotels/fc513-1.jpg" alt="FC513" style="width:100%;border-radius:8px;margin-bottom:8px;object-fit:cover;max-height:220px;"><div style="display:flex;gap:8px;"><img src="hotels/fc513-2.jpg" alt="FC513-2" style="flex:1;min-width:0;border-radius:8px;object-fit:cover;max-height:160px;"><img src="hotels/fc513-3.jpg" alt="FC513-3" style="flex:1;min-width:0;border-radius:8px;object-fit:cover;max-height:160px;"></div></div>
     </div>
     <div class="modal-section">
       <div class="modal-section-title">방 구성</div>
@@ -758,10 +672,7 @@ header .sub{font-size:0.82rem;opacity:0.85;margin-bottom:14px;}
   </div>
   <div class="modal-body">
     <div class="modal-photo-area">
-      <div class="modal-photo-ph">
-        <span>사진 준비 중</span>
-        <span style="font-size:0.7rem;">Airbnb에서 확인 가능</span>
-      </div>
+      <div class="modal-photos"><img src="hotels/xinqili-1.jpg" alt="新起里" style="width:100%;border-radius:8px;margin-bottom:8px;object-fit:cover;max-height:220px;"><div style="display:flex;gap:8px;"><img src="hotels/xinqili-2.jpg" alt="新起里-2" style="flex:1;min-width:0;border-radius:8px;object-fit:cover;max-height:160px;"><img src="hotels/xinqili-3.jpg" alt="新起里-3" style="flex:1;min-width:0;border-radius:8px;object-fit:cover;max-height:160px;"></div></div>
     </div>
     <div class="modal-section">
       <div class="modal-section-title">방 구성</div>
