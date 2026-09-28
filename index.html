@@ -1,4 +1,4 @@
-  ma2 : ts=20571 d1=20757 d2=20770 len=205 NOT FOUND: ma2 Replaced thumb for ma1 <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -157,6 +157,72 @@ header .sub{font-size:0.82rem;opacity:0.85;margin-bottom:14px;}
   .route-grid{grid-template-columns:1fr;}
   .hotel-grid{grid-template-columns:1fr;}
 }
+
+/* HEART BUTTON */
+.heart-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 20px;
+  padding: 6px 14px;
+  cursor: pointer;
+  font-size: 14px;
+  color: #718096;
+  margin-top: 8px;
+  transition: all 0.2s;
+}
+.heart-btn.has-likes {
+  border-color: #fc8181;
+  color: #e53e3e;
+  background: #fff5f5;
+}
+.heart-btn .heart-icon { font-size: 16px; }
+
+/* LIKE POPUP */
+.like-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+.like-popup {
+  background: #fff;
+  border-radius: 16px;
+  padding: 24px;
+  width: 280px;
+  text-align: center;
+}
+.like-popup h3 { font-size: 16px; margin-bottom: 16px; }
+.member-btns { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.member-btn {
+  padding: 8px 16px;
+  border-radius: 20px;
+  border: 1.5px solid #e2e8f0;
+  background: #fff;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+.member-btn.liked {
+  background: #e53e3e;
+  color: #fff;
+  border-color: #e53e3e;
+}
+.like-popup .close-btn {
+  margin-top: 16px;
+  padding: 8px 20px;
+  border: none;
+  background: #f7fafc;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  color: #718096;
+}
 </style>
 </head>
 <body>
@@ -210,23 +276,6 @@ header .sub{font-size:0.82rem;opacity:0.85;margin-bottom:14px;}
         </div>
         <div class="flight-note">귀국 TPE 12:40 출발 — 귀국 당일 오전만 자유 관광 가능</div>
         <a href="https://www.myrealtrip.com/offers/flights" target="_blank" class="btn-book-flight">마이리얼트립에서 예약</a>
-      </div>
-    </div>
-
-    <!-- 2위: 아시아나 -->
-    <div class="flight-card runner">
-      <div class="flight-inner">
-        <div class="flight-top">
-          <span class="flight-rank r2">2순위 참고</span>
-          <span class="flight-airline">아시아나항공</span>
-          <span class="flight-sub">하나투어</span>
-        </div>
-        <div style="font-size:0.8rem;color:#4a5568;margin-bottom:8px;">OZ711 / OZ714</div>
-        <div class="price-row">
-          <span class="price-total" style="font-size:1rem;">2,596,000원</span>
-          <span class="price-per">5인 총합 &nbsp;|&nbsp; 1인 519,200원</span>
-        </div>
-        <div style="font-size:0.73rem;color:#e74c3c;margin-top:6px;">진에어 대비 5인 기준 478,500원 더 비쌈</div>
       </div>
     </div>
 
@@ -796,6 +845,109 @@ header .sub{font-size:0.82rem;opacity:0.85;margin-bottom:14px;}
   </div>
 </div>
 </div>
+
+<!-- Like Popup HTML -->
+<div id="like-overlay" class="like-overlay" style="display:none;" onclick="if(event.target===this)closeLikePopup()">
+  <div class="like-popup">
+    <h3>누구세요?</h3>
+    <div class="member-btns" id="member-btns"></div>
+    <button class="close-btn" onclick="closeLikePopup()">닫기</button>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyARuzrDMQb4oMYcJywrMNctXopIHeqCNUA",
+  authDomain: "travel-26.firebaseapp.com",
+  projectId: "travel-26",
+  storageBucket: "travel-26.firebasestorage.app",
+  messagingSenderId: "174199082566",
+  appId: "1:174199082566:web:7d4fc7c1cf429e941d8447"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+const MEMBERS = ['진숙', '기수', '미라', '상원', '태호'];
+const HOTEL_IDS = ['m1', 'm2', 'm3', 'm4', 'm5', 'ma1', 'ma2', 'ma3'];
+let currentHotelId = null;
+let likesCache = {};
+
+// 모든 hotel-card에 heart-btn 동적 생성
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('.hotel-card').forEach(card => {
+    const onclickAttr = card.getAttribute('onclick');
+    const match = onclickAttr && onclickAttr.match(/openModal\('(\w+)'\)/);
+    if (!match) return;
+    const hotelId = match[1];
+    const heartBtn = document.createElement('button');
+    heartBtn.className = 'heart-btn';
+    heartBtn.id = 'heart-' + hotelId;
+    heartBtn.innerHTML = '&#9829; <span id="count-' + hotelId + '">0</span>명';
+    heartBtn.onclick = (e) => { e.stopPropagation(); openLikePopup(hotelId); };
+    const body = card.querySelector('.hotel-body');
+    if (body) body.appendChild(heartBtn);
+  });
+
+  // 실시간 리스너 등록
+  HOTEL_IDS.forEach(hotelId => {
+    const ref = doc(db, 'hotel_likes', hotelId);
+    onSnapshot(ref, (snap) => {
+      const data = snap.exists() ? snap.data() : {};
+      likesCache[hotelId] = data;
+      updateHeartUI(hotelId, data);
+      // 팝업이 현재 이 호텔 것이라면 멤버 버튼도 갱신
+      if (currentHotelId === hotelId) renderMemberBtns(hotelId, data);
+    });
+  });
+});
+
+function updateHeartUI(hotelId, data) {
+  const count = MEMBERS.filter(m => data[m] === true).length;
+  const countEl = document.getElementById('count-' + hotelId);
+  const heartEl = document.getElementById('heart-' + hotelId);
+  if (countEl) countEl.textContent = count;
+  if (heartEl) {
+    if (count > 0) heartEl.classList.add('has-likes');
+    else heartEl.classList.remove('has-likes');
+  }
+}
+
+function renderMemberBtns(hotelId, data) {
+  const container = document.getElementById('member-btns');
+  container.innerHTML = '';
+  MEMBERS.forEach(name => {
+    const btn = document.createElement('button');
+    btn.className = 'member-btn' + (data[name] ? ' liked' : '');
+    btn.textContent = name;
+    btn.onclick = () => toggleLike(hotelId, name);
+    container.appendChild(btn);
+  });
+}
+
+window.openLikePopup = function(hotelId) {
+  currentHotelId = hotelId;
+  const data = likesCache[hotelId] || {};
+  renderMemberBtns(hotelId, data);
+  document.getElementById('like-overlay').style.display = 'flex';
+};
+
+window.closeLikePopup = function() {
+  document.getElementById('like-overlay').style.display = 'none';
+  currentHotelId = null;
+};
+
+async function toggleLike(hotelId, memberName) {
+  const ref = doc(db, 'hotel_likes', hotelId);
+  const current = likesCache[hotelId] || {};
+  const newVal = !current[memberName];
+  const update = Object.assign({}, current, { [memberName]: newVal });
+  await setDoc(ref, update);
+}
+</script>
 
 <script>
 function imgErr(el, initial) {
