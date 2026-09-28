@@ -236,11 +236,6 @@ header .sub{font-size:0.82rem;opacity:0.85;margin-bottom:14px;}
   <div class="section-label" style="margin-top:32px;">숙소</div>
   <div class="section-title">숙소 후보 — 가격 오름차순 (카드 클릭시 상세)</div>
 
-  <!-- ===== Booking.com 섹션 ===== -->
-  <div class="platform-section">
-    <span class="platform-label booking">Booking.com</span>
-    <span class="platform-section-note">5개 숙소 — 가격 오름차순</span>
-  </div>
   <div class="hotel-grid">
 
     <!-- B1. Triple Tiger Inn — 498,097원 -->
@@ -261,6 +256,63 @@ header .sub{font-size:0.82rem;opacity:0.85;margin-bottom:14px;}
         <div class="hotel-price-sub">5인 3박 총합 (세금 포함)</div>
         <div class="hotel-feature">패밀리 스위트 1실 &mdash; 5인 한 공간, 무료취소</div>
         <a href="https://www.booking.com/hotel/tw/triple-tiger-taipei.ko.html?checkin=2026-11-14&checkout=2026-11-17&group_adults=5&no_rooms=1" target="_blank" class="btn-bcom" onclick="event.stopPropagation()">Booking.com에서 보기</a>
+      </div>
+    </div>
+
+    <!-- A1. FC513 아파트 — 640,152원 (1박 213,384원) -->
+    <div class="hotel-card" onclick="openModal('ma1')">
+      <div class="hotel-thumb"><img src="hotels/fc513-1.jpg" style="width:100%;height:180px;object-fit:cover;border-radius:12px 12px 0 0;display:block;"></div>
+      <div class="hotel-color c6"></div>
+      <div class="hotel-body">
+        <span class="platform-badge airbnb">Airbnb</span>
+        <div class="hotel-name">FC513 아파트</div>
+        <div class="hotel-loc">충효푸싱 | MRT 충효푸싱역 도보 3분</div>
+        <div class="hotel-rating-row">
+          <span class="hotel-score">4.92</span>
+          <span class="hotel-reviews">12개 리뷰</span>
+        </div>
+        <div class="hotel-price">640,152원</div>
+        <div class="hotel-price-sub">3박 총합 (1박 약 213,384원) — 욕실 1개 공용</div>
+        <div class="hotel-feature">침실 3 / 욕실 1 / 침대 4 &mdash; MRT 충효푸싱역 도보 3분</div>
+        <a href="https://www.airbnb.co.kr/rooms/1670950355394971873" target="_blank" class="btn-airbnb" onclick="event.stopPropagation()">Airbnb에서 보기</a>
+      </div>
+    </div>
+
+    <!-- A2. 新起里 아파트 — 671,676원 (1박 223,892원) -->
+    <div class="hotel-card" onclick="openModal('ma2')">
+      <div class="hotel-thumb"><img src="hotels/xinqili-1.jpg" style="width:100%;height:180px;object-fit:cover;border-radius:12px 12px 0 0;display:block;"></div>
+      <div class="hotel-color c7"></div>
+      <div class="hotel-body">
+        <span class="platform-badge airbnb">Airbnb</span>
+        <div class="hotel-name">新起里 아파트</div>
+        <div class="hotel-loc">시먼딩 | MRT 시먼역 도보 3분</div>
+        <div class="hotel-rating-row">
+          <span class="hotel-score">4.89</span>
+          <span class="hotel-reviews">75개 리뷰</span>
+        </div>
+        <div class="hotel-price">671,676원</div>
+        <div class="hotel-price-sub">3박 총합 (1박 약 223,892원)</div>
+        <div class="hotel-feature">침실 2 / 독립욕실 2 / 침대 4 &mdash; 시먼역 도보 3분</div>
+        <a href="https://www.airbnb.co.kr/rooms/1170836700951503193" target="_blank" class="btn-airbnb" onclick="event.stopPropagation()">Airbnb에서 보기</a>
+      </div>
+    </div>
+
+    <!-- A3. 敦安里 아파트 — 868,587원 (1박 289,529원) -->
+    <div class="hotel-card" onclick="openModal('ma3')">
+      <div class="hotel-thumb"><img src="hotels/dunli-1.jpg" style="width:100%;height:180px;object-fit:cover;border-radius:12px 12px 0 0;display:block;"></div>
+      <div class="hotel-color c8"></div>
+      <div class="hotel-body">
+        <span class="platform-badge airbnb">Airbnb</span>
+        <div class="hotel-name">敦安里 아파트</div>
+        <div class="hotel-loc">신이/타이베이101 | MRT 신이안허역 도보 5분</div>
+        <div class="hotel-rating-row">
+          <span class="hotel-score">4.96</span>
+          <span class="hotel-reviews">48개 리뷰</span>
+        </div>
+        <div class="hotel-price">868,587원</div>
+        <div class="hotel-price-sub">3박 총합 (1박 약 289,529원)</div>
+        <div class="hotel-feature">침실 3 / 욕실 2 / 침대 4 &mdash; 101 타워 인근, 부모님 분리 가능</div>
+        <a href="https://www.airbnb.co.kr/rooms/1475162054068250207" target="_blank" class="btn-airbnb" onclick="event.stopPropagation()">Airbnb에서 보기</a>
       </div>
     </div>
 
@@ -349,132 +401,7 @@ header .sub{font-size:0.82rem;opacity:0.85;margin-bottom:14px;}
       </div>
     </div>
 
-  </div><!-- end hotel-grid booking -->
-
-  <!-- ===== Airbnb 섹션 ===== -->
-  <div class="platform-section">
-    <span class="platform-label airbnb">Airbnb</span>
-    <span class="platform-section-note">3개 숙소 — 가격 오름차순</span>
-  </div>
-  <div class="hotel-grid">
-
-    <!-- A1. FC513 아파트 — 640,152원 (1박 213,384원) -->
-    <div class="hotel-card" onclick="openModal('ma1')">
-      <div class="hotel-thumb"><img src="hotels/fc513-1.jpg" style="width:100%;height:180px;object-fit:cover;border-radius:12px 12px 0 0;display:block;"></div>
-      <div class="hotel-color c6"></div>
-      <div class="hotel-body">
-        <span class="platform-badge airbnb">Airbnb</span>
-        <div class="hotel-name">FC513 아파트</div>
-        <div class="hotel-loc">충효푸싱 | MRT 충효푸싱역 도보 3분</div>
-        <div class="hotel-rating-row">
-          <span class="hotel-score">4.92</span>
-          <span class="hotel-reviews">12개 리뷰</span>
-        </div>
-        <div class="hotel-price">640,152원</div>
-        <div class="hotel-price-sub">3박 총합 (1박 약 213,384원) — 욕실 1개 공용</div>
-        <div class="hotel-feature">침실 3 / 욕실 1 / 침대 4 &mdash; MRT 충효푸싱역 도보 3분</div>
-        <a href="https://www.airbnb.co.kr/rooms/1670950355394971873" target="_blank" class="btn-airbnb" onclick="event.stopPropagation()">Airbnb에서 보기</a>
-      </div>
-    </div>
-
-    <!-- A2. 新起里 아파트 — 671,676원 (1박 223,892원) -->
-    <div class="hotel-card" onclick="openModal('ma2')">
-      <div class="hotel-thumb"><img src="hotels/xinqili-1.jpg" style="width:100%;height:180px;object-fit:cover;border-radius:12px 12px 0 0;display:block;"></div>
-      <div class="hotel-color c7"></div>
-      <div class="hotel-body">
-        <span class="platform-badge airbnb">Airbnb</span>
-        <div class="hotel-name">新起里 아파트</div>
-        <div class="hotel-loc">시먼딩 | MRT 시먼역 도보 3분</div>
-        <div class="hotel-rating-row">
-          <span class="hotel-score">4.89</span>
-          <span class="hotel-reviews">75개 리뷰</span>
-        </div>
-        <div class="hotel-price">671,676원</div>
-        <div class="hotel-price-sub">3박 총합 (1박 약 223,892원)</div>
-        <div class="hotel-feature">침실 2 / 독립욕실 2 / 침대 4 &mdash; 시먼역 도보 3분</div>
-        <a href="https://www.airbnb.co.kr/rooms/1170836700951503193" target="_blank" class="btn-airbnb" onclick="event.stopPropagation()">Airbnb에서 보기</a>
-      </div>
-    </div>
-
-    <!-- A3. 敦安里 아파트 — 868,587원 (1박 289,529원) -->
-    <div class="hotel-card" onclick="openModal('ma3')">
-      <div class="hotel-badge parents">부모님 분리</div>
-      <div class="hotel-thumb"><img src="hotels/dunli-1.jpg" style="width:100%;height:180px;object-fit:cover;border-radius:12px 12px 0 0;display:block;"></div>
-      <div class="hotel-color c8"></div>
-      <div class="hotel-body">
-        <span class="platform-badge airbnb">Airbnb</span>
-        <div class="hotel-name">敦安里 아파트</div>
-        <div class="hotel-loc">신이/타이베이101 | MRT 신이안허역 도보 5분</div>
-        <div class="hotel-rating-row">
-          <span class="hotel-score">4.96</span>
-          <span class="hotel-reviews">48개 리뷰</span>
-        </div>
-        <div class="hotel-price">868,587원</div>
-        <div class="hotel-price-sub">3박 총합 (1박 약 289,529원)</div>
-        <div class="hotel-feature">침실 3 / 욕실 2 / 침대 4 &mdash; 101 타워 인근, 부모님 분리 가능</div>
-        <a href="https://www.airbnb.co.kr/rooms/1475162054068250207" target="_blank" class="btn-airbnb" onclick="event.stopPropagation()">Airbnb에서 보기</a>
-      </div>
-    </div>
-
-  </div><!-- end hotel-grid airbnb -->
-
-  <!-- ===== Agoda 섹션 ===== -->
-  <div class="platform-section">
-    <span class="platform-label agoda">Agoda</span>
-    <span class="platform-section-note">2개 숙소 — 가격 직접 확인 필요</span>
-  </div>
-  <div class="hotel-grid">
-
-    <!-- G1. 솔라리아 니시테츠 — 가격 미확인 -->
-    <div class="hotel-card" onclick="openModal('mg1')">
-      <div class="hotel-badge top-rating">평점 최고</div>
-      <div class="hotel-thumb">
-        <div class="hotel-thumb-ph">
-          <span class="hotel-thumb-ph-initial">S</span>
-          <span class="hotel-thumb-ph-text">사진 준비 중</span>
-        </div>
-      </div>
-      <div class="hotel-color c9"></div>
-      <div class="hotel-body">
-        <span class="platform-badge agoda">Agoda</span>
-        <div class="hotel-name">솔라리아 니시테츠 호텔</div>
-        <div class="hotel-loc">시먼딩 | MRT 시먼역 도보 1-2분</div>
-        <div class="hotel-rating-row">
-          <span class="hotel-score">9.2</span>
-          <span class="hotel-reviews">12,313개 리뷰</span>
-        </div>
-        <div class="hotel-price-unknown">가격 직접 확인</div>
-        <div class="hotel-price-sub">Agoda에서 11.14-17 / 2룸 / 5인 검색</div>
-        <div class="hotel-feature">평점 9.2 최고 &mdash; 시먼역 1-2분, 일본계 호텔 서비스</div>
-        <a href="https://www.agoda.com/ko-kr/city/taipei-tw.html?checkIn=2026-11-14&checkOut=2026-11-17&rooms=2&adults=5&children=0&los=3" target="_blank" class="btn-agoda" onclick="event.stopPropagation()">Agoda에서 보기</a>
-      </div>
-    </div>
-
-    <!-- G2. 웨스트게이트 호텔 — 가격 미확인 -->
-    <div class="hotel-card" onclick="openModal('mg2')">
-      <div class="hotel-thumb">
-        <div class="hotel-thumb-ph">
-          <span class="hotel-thumb-ph-initial">W</span>
-          <span class="hotel-thumb-ph-text">사진 준비 중</span>
-        </div>
-      </div>
-      <div class="hotel-color c10"></div>
-      <div class="hotel-body">
-        <span class="platform-badge agoda">Agoda</span>
-        <div class="hotel-name">웨스트게이트 호텔</div>
-        <div class="hotel-loc">시먼딩 | MRT 시먼역 도보 1분</div>
-        <div class="hotel-rating-row">
-          <span class="hotel-score">9.0</span>
-          <span class="hotel-reviews">13,539개 리뷰</span>
-        </div>
-        <div class="hotel-price-unknown">가격 직접 확인</div>
-        <div class="hotel-price-sub">Agoda에서 11.14-17 / 2룸 / 5인 검색</div>
-        <div class="hotel-feature">리뷰 13,539개 최다 &mdash; 시먼역 도보 1분 최강 접근성</div>
-        <a href="https://www.agoda.com/ko-kr/city/taipei-tw.html?checkIn=2026-11-14&checkOut=2026-11-17&rooms=2&adults=5&children=0&los=3" target="_blank" class="btn-agoda" onclick="event.stopPropagation()">Agoda에서 보기</a>
-      </div>
-    </div>
-
-  </div><!-- end hotel-grid agoda -->
+  </div><!-- end hotel-grid -->
 
 </div><!-- end container -->
 
@@ -866,103 +793,6 @@ header .sub{font-size:0.82rem;opacity:0.85;margin-bottom:14px;}
     </div>
     <a href="https://www.airbnb.co.kr/rooms/1475162054068250207" target="_blank" class="btn-modal-airbnb">Airbnb에서 예약하기</a>
     <div class="modal-close" onclick="closeModal('ma3')">닫기</div>
-  </div>
-</div>
-</div>
-
-<!-- Modal mg1: 솔라리아 니시테츠 -->
-<div id="modal-mg1" class="modal-overlay" onclick="closeModalOutside(event,'mg1')">
-<div class="modal">
-  <div class="modal-header mh9">
-    <div class="modal-title">솔라리아 니시테츠 호텔 <span style="font-size:0.78rem;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:8px;vertical-align:middle;">평점 최고</span></div>
-    <div class="modal-loc">시먼딩 | MRT 시먼역 도보 1-2분</div>
-  </div>
-  <div class="modal-body">
-    <div class="modal-photo-area">
-      <div class="modal-photo-ph">
-        <span>사진 준비 중</span>
-        <span style="font-size:0.7rem;">Agoda에서 확인 가능</span>
-      </div>
-    </div>
-    <div class="modal-section">
-      <div class="modal-section-title">방 구성</div>
-      <div class="room-info">2룸 예약 기준 (성인 5인)<br>Agoda에서 가격 및 방 타입 직접 확인 필요</div>
-    </div>
-    <div class="modal-section">
-      <div class="modal-section-title">장단점</div>
-      <div class="pros-cons">
-        <div class="pros">
-          <div class="pros-title">장점</div>
-          <ul>
-            <li>평점 9.2 &mdash; 전체 후보 중 최고</li>
-            <li>시먼역 도보 1-2분 &mdash; 야시장·쇼핑 즉시</li>
-            <li>리뷰 12,313개 &mdash; 높은 신뢰도</li>
-            <li>일본계 호텔 &mdash; 서비스 품질 안정적</li>
-          </ul>
-        </div>
-        <div class="cons">
-          <div class="cons-title">단점</div>
-          <ul>
-            <li>가격 미확인 &mdash; 직접 검색 필요</li>
-            <li>2룸 배정 시 층수·연결통로 별도 확인</li>
-          </ul>
-        </div>
-      </div>
-    </div>
-    <div class="modal-price-row">
-      <span class="modal-price" style="font-size:1rem;color:#7f8c8d;">가격 직접 확인</span>
-      <span class="modal-price-sub">2026.11.14-17 / 2룸 / 5인</span>
-    </div>
-    <a href="https://www.agoda.com/ko-kr/city/taipei-tw.html?checkIn=2026-11-14&checkOut=2026-11-17&rooms=2&adults=5&children=0&los=3" target="_blank" class="btn-modal-agoda">Agoda에서 확인하기</a>
-    <div class="modal-close" onclick="closeModal('mg1')">닫기</div>
-  </div>
-</div>
-</div>
-
-<!-- Modal mg2: 웨스트게이트 호텔 -->
-<div id="modal-mg2" class="modal-overlay" onclick="closeModalOutside(event,'mg2')">
-<div class="modal">
-  <div class="modal-header mh10">
-    <div class="modal-title">웨스트게이트 호텔</div>
-    <div class="modal-loc">시먼딩 | MRT 시먼역 도보 1분</div>
-  </div>
-  <div class="modal-body">
-    <div class="modal-photo-area">
-      <div class="modal-photo-ph">
-        <span>사진 준비 중</span>
-        <span style="font-size:0.7rem;">Agoda에서 확인 가능</span>
-      </div>
-    </div>
-    <div class="modal-section">
-      <div class="modal-section-title">방 구성</div>
-      <div class="room-info">2룸 예약 기준 (성인 5인)<br>Agoda에서 가격 및 방 타입 직접 확인 필요</div>
-    </div>
-    <div class="modal-section">
-      <div class="modal-section-title">장단점</div>
-      <div class="pros-cons">
-        <div class="pros">
-          <div class="pros-title">장점</div>
-          <ul>
-            <li>평점 9.0 &mdash; 전체 후보 상위권</li>
-            <li>시먼역 도보 1분 &mdash; 접근성 최강</li>
-            <li>리뷰 13,539개 &mdash; 전체 후보 최다</li>
-          </ul>
-        </div>
-        <div class="cons">
-          <div class="cons-title">단점</div>
-          <ul>
-            <li>가격 미확인 &mdash; 직접 검색 필요</li>
-            <li>2룸 배정 시 층수·연결통로 별도 확인</li>
-          </ul>
-        </div>
-      </div>
-    </div>
-    <div class="modal-price-row">
-      <span class="modal-price" style="font-size:1rem;color:#7f8c8d;">가격 직접 확인</span>
-      <span class="modal-price-sub">2026.11.14-17 / 2룸 / 5인</span>
-    </div>
-    <a href="https://www.agoda.com/ko-kr/city/taipei-tw.html?checkIn=2026-11-14&checkOut=2026-11-17&rooms=2&adults=5&children=0&los=3" target="_blank" class="btn-modal-agoda">Agoda에서 확인하기</a>
-    <div class="modal-close" onclick="closeModal('mg2')">닫기</div>
   </div>
 </div>
 </div>
