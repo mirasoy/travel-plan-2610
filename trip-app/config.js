@@ -12,7 +12,7 @@ export const CONFIG = {
 
   // Maps Embed API 전용 공개 키(API 제한: Maps Embed API만, 웹사이트 제한: 이 앱의 origin).
   // Worker 의 GOOGLE_PLACES_KEY 와 절대 같은 키를 쓰지 않는다. 비우면 지도 관련 버튼을 숨긴다.
-  embedKey: '',
+  embedKey: 'AIzaSyAeZuZg-yuXh1_LyMginC64b7_8gGca2GM',
   // 목적지의 UTC 오프셋(구간 출발 시각 at 에 붙는다). 예: 타이베이 "+08:00"
   utcOffset: '+08:00',
   // 앞 카드에 시간이 없을 때 쓰는 출발 시각
