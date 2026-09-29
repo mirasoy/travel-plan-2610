@@ -48,3 +48,18 @@ export function parseShare(input) {
     name: lines.join(' ')
   };
 }
+
+// 풀 URL 에서 장소 이름만 뽑는다. 이름/주소 분리 같은 가공은 하지 않고 URL 에 든 문자열을 그대로 디코딩한다.
+// 지원: /maps/place/<이름>/..., /maps/search/<이름>/..., ?q=<이름>. 좌표뿐이면 빈 문자열.
+export function placeNameFromUrl(full) {
+  let u;
+  try { u = new URL(full); } catch (e) { return ''; }
+  if (!/(^|\.)google\.[a-z.]+$/i.test(u.hostname)) return '';
+  const m = /\/maps\/(?:place|search)\/([^/@?]+)/.exec(u.pathname);
+  let raw = m ? m[1] : (u.pathname.startsWith('/maps') ? (u.searchParams.get('q') || '') : '');
+  raw = raw.replace(/\+/g, ' ');
+  try { raw = decodeURIComponent(raw); } catch (e) { /* 그대로 사용 */ }
+  raw = raw.replace(/\s+/g, ' ').trim();
+  if (/^-?\d+(\.\d+)?\s*,\s*-?\d+(\.\d+)?$/.test(raw)) return '';
+  return raw;
+}
