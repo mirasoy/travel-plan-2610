@@ -13,6 +13,8 @@
       match /items/{id}    { allow read, write: if true; }
       match /expenses/{id} { allow read, write: if true; }
       match /members/{id}  { allow read, write: if true; }
+      match /flights/{id}  { allow read, write: if true; }
+      match /lodgings/{id} { allow read, write: if true; }
     }
 
 // 한계(최종 보고서 참고):

@@ -19,3 +19,20 @@ API 키는 코드, 설정, 레포 어디에도 넣지 않는다. config.js 의 r
    resolve_note 가 ok 또는 recovered_from_sorry, placeId 가 ChIJQXcl6LarQjQRGUMnQ18F0lE 로 나오면 정상.
 5. 키 등록 후 `&places=0` 을 빼고 호출한다. source 가 places 이고 name 에 딘타이펑이 나오면 정상.
 6. 구글 콘솔에서 Places API (New)의 일일 할당량 상한을 낮게 걸어둔다(요금 폭주 방지).
+
+## 구간 이동시간, 구간 지도 (Worker v2, 직접 손으로)
+
+1. Google Cloud 에서 Maps Embed API 를 활성화하고 Embed 전용 키를 만든다. API 제한은 Maps Embed API 만, 웹사이트 제한은 앱 origin(예: https://mirasoy.github.io/*).
+2. Routes API 를 활성화하고, Worker 키(GOOGLE_PLACES_KEY)의 API 제한에 Places API (New)와 Routes API 를 포함한다.
+3. Worker v2 로 교체 배포하고, config.js 의 embedKey 에 Embed 전용 키를 넣는다. Worker 키와 절대 같은 키를 쓰지 않는다. embedKey 가 비어 있으면 지도 버튼이 숨겨지고 이동시간 배지만 나온다.
+4. 앱 배포 후 Worker 변수 ALLOWED_ORIGINS 에 앱 origin 을 설정한다(POST /legs 는 CORS 사전 요청을 쓰므로 Worker 가 OPTIONS 에 응답해야 한다).
+
+이동시간과 거리는 구글 약관의 캐싱 제한 때문에 어디에도 저장하지 않는다(메모리 캐시뿐, 새로고침하면 다시 계산).
+
+## 항공편 공항 확정 (Worker v3, 직접 손으로)
+
+1. Worker v3 로 교체 배포한다(새로 켤 API 없음, Places API (New) 사용).
+2. 확인: `{resolverUrl}/airport?code=TPE` 의 candidates 에 타오위안 국제공항이 오는지 본다.
+
+config.js 의 utcOffset, defaultDepartTime, walkWarnMin, airportBufferMin, earlyDepartureBefore 는 여행지에 맞게 조정한다.
+
