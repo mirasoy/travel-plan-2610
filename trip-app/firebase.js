@@ -16,5 +16,5 @@ export const app = initializeApp(firebaseConfig, 'trip-app');
 export const db = getFirestore(app);
 
 export {
-  doc, collection, setDoc, updateDoc, deleteDoc, onSnapshot, writeBatch
+  doc, collection, getDoc, getDocs, setDoc, updateDoc, deleteDoc, onSnapshot, writeBatch
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";

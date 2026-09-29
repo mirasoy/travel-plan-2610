@@ -58,17 +58,41 @@
     <div id="day-tabs" class="day-tabs"></div>
     <div class="day-head">
       <h2 id="day-title" class="section-title"></h2>
-      <button id="dates-btn" class="btn ghost small" type="button">여행 기간</button>
+      <button id="route-btn" class="btn ghost small" type="button" hidden>전체 경로</button>
     </div>
+    <div id="day-basis" class="basis" hidden></div>
+    <div id="day-warn" class="warns" hidden></div>
     <ul id="day-items" class="list"></ul>
     <div id="day-empty" class="empty" hidden>이 날의 일정이 비어 있음</div>
+    <div id="legs-credit" class="attrib credit" hidden>이동시간: Google Maps</div>
     <button id="add-item-btn" class="btn primary block" type="button">장소 추가</button>
+  </section>
+
+  <section id="tab-settings" class="tab" hidden>
+    <h2 class="section-title">여행 날짜</h2>
+    <div class="panel">
+      <div id="trip-summary" class="summary"></div>
+      <div id="trip-warns" class="warns"></div>
+      <button id="dates-btn" class="btn ghost small block" type="button">날짜 직접 입력 (항공편이 없을 때)</button>
+    </div>
+
+    <h2 id="sec-flights" class="section-title">항공편</h2>
+    <div id="flights-box"></div>
+
+    <h2 id="sec-lodgings" class="section-title">숙소</h2>
+    <div id="lodgings-box" class="panel"></div>
+
+    <h2 class="section-title">데이터</h2>
+    <div class="panel">
+      <button id="export-btn" class="btn block" type="button" style="margin-top:0">JSON 내보내기</button>
+    </div>
   </section>
 </main>
 
 <nav class="tabbar">
   <button type="button" data-tab="pool" class="active">장소</button>
   <button type="button" data-tab="plan">일정</button>
+  <button type="button" data-tab="settings">설정</button>
 </nav>
 
 <div id="modal-root"></div>

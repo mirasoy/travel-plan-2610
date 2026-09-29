@@ -1,8 +1,10 @@
 import { CONFIG } from './config.js';
 import {
-  db, doc, collection, setDoc, updateDoc, deleteDoc, onSnapshot, writeBatch
+  db, doc, collection, getDoc, getDocs, setDoc, updateDoc, deleteDoc, onSnapshot, writeBatch
 } from './firebase.js';
 import { extractMapUrl, cleanMapUrl, joinShareParams, urlKey, mapOpenUrl } from './parse.js';
+import * as TC from './trip-calc.js';
+import { createLegsService, legKey } from './legs.js';
 
 const CATS = [
   ['sight', '관광'], ['food', '식당'], ['massage', '마사지'], ['cafe', '카페'], ['etc', '기타']
@@ -13,11 +15,15 @@ const catLabel = c => (CATS.find(x => x[0] === c) || [])[1] || '';
 const tripRef = doc(db, 'trips', CONFIG.tripId);
 const poolCol = collection(tripRef, 'pool');
 const itemsCol = collection(tripRef, 'items');
+const flightsCol = collection(tripRef, 'flights');   // 문서 ID 고정: out, in
+const lodgingsCol = collection(tripRef, 'lodgings');
 
 const state = {
   trip: null,
   pool: [],
   items: [],
+  flights: { out: null, in: null },
+  lodgings: [],
   itemsLoaded: false,
   tab: 'pool',
   day: 1,
@@ -101,16 +107,16 @@ const notice = (title, message) => choose(title, message, [{ label: '확인', va
 
 function singleLine(s) { return String(s || '').replace(/\s+/g, ' ').trim(); }
 
-function parseYmd(s) {
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s || '');
-  return m ? Date.UTC(+m[1], +m[2] - 1, +m[3]) : null;
-}
-const DAY_MS = 86400000;
+const parseYmd = TC.parseYmd;
 const WEEK = ['일', '월', '화', '수', '목', '금', '토'];
-function fmtDate(ms) {
+// 'YYYY-MM-DD' -> 'M/D(요일)'. UTC 기준 파싱이라 실행 환경의 시간대와 무관하다.
+function fmtDate(ymd) {
+  const ms = parseYmd(ymd);
+  if (ms == null) return '';
   const d = new Date(ms);
   return (d.getUTCMonth() + 1) + '/' + d.getUTCDate() + '(' + WEEK[d.getUTCDay()] + ')';
 }
+const fmtMD = ymd => ymd ? (+ymd.slice(5, 7)) + '/' + (+ymd.slice(8, 10)) : '';
 
 const byOrder = (a, b) => ((a.order || 0) - (b.order || 0)) || a.id.localeCompare(b.id);
 
@@ -492,12 +498,57 @@ function renderPool() {
 
 /* ---------- 일정 ---------- */
 
-function tripDays() {
-  const s = parseYmd(state.trip && state.trip.startDate);
-  const e = parseYmd(state.trip && state.trip.endDate);
-  const byDates = (s != null && e != null && e >= s) ? Math.min(Math.round((e - s) / DAY_MS) + 1, 60) : 0;
-  const maxItemDay = state.items.reduce((m, i) => Math.max(m, i.day || 0), 0);
-  return Math.max(byDates, maxItemDay, state.manualDays, 1);
+// 여행 날짜, 앵커, 숙소 배정은 항상 flights/lodgings 에서 다시 계산한다(저장하지 않는다).
+function model() {
+  return TC.buildTripModel({ flights: state.flights, lodgings: state.lodgings, trip: state.trip, items: state.items, cfg: CONFIG });
+}
+
+// 이동시간은 메모리에만 둔다(약관의 캐싱 제한). 새로고침하면 다시 계산한다.
+const legs = createLegsService({ getResolverUrl: () => CONFIG.resolverUrl });
+let legSeq = 0;          // 요청 번호: 늦게 도착한 오래된 응답이 최신 화면을 덮지 않게 한다
+let legTimer = null;
+let legImmediate = false; // 일차 화면을 막 열었을 때는 디바운스 없이 바로 요청
+
+function dayCards(day) {
+  return dayItems(day).map(it => {
+    const p = poolOf(it);
+    return { kind: 'card', item: it, placeId: (p && p.placeId) || null };
+  });
+}
+
+// 표시 순서(앵커 + 카드)에서 인접 쌍마다 구간 하나. 계산 가능한 쌍에는 요청 pair 를 붙인다.
+function legSlots(m, day, seq) {
+  const slots = [];
+  for (let i = 0; i < seq.length - 1; i++) {
+    const a = seq[i], b = seq[i + 1];
+    const elig = TC.legEligibility(a, b);
+    const slot = { a, b, elig, pair: null };
+    if (elig === 'ok') slot.pair = { from: a.placeId, to: b.placeId, at: TC.legDepartAt(m, day, a, CONFIG) };
+    slots.push(slot);
+  }
+  return slots;
+}
+
+function scheduleLegs() {
+  clearTimeout(legTimer);
+  const delay = legImmediate ? 0 : 500; // 순서나 시간이 바뀐 뒤에는 500ms 디바운스
+  legImmediate = false;
+  legTimer = setTimeout(runLegs, delay);
+}
+
+async function runLegs() {
+  const m = model();
+  const day = state.day;
+  const seq = TC.daySequence(m, day, dayCards(day));
+  const pairs = legSlots(m, day, seq).filter(s => s.pair).map(s => s.pair);
+  const pendingNow = pairs.some(p => { const r = legs.get(legKey(p)); return r && r.pending; });
+  if (!legs.missing(pairs).length && !pendingNow) return;
+  const mine = ++legSeq;
+  const done = legs.ensure(pairs); // 캐시에 없는 쌍만 모아 한 번의 POST(20쌍 초과 시 순차 분할)
+  renderPlan();                    // 스켈레톤 표시
+  await done;
+  if (mine !== legSeq) return;     // 더 새로운 요청이 시작됐으면 이 응답으로 화면을 덮지 않는다
+  renderPlan();
 }
 
 function dayItems(day) {
@@ -511,39 +562,201 @@ function itemTitle(it) {
 }
 
 function renderPlan() {
-  const total = tripDays();
+  const m = model();
+  const total = Math.max(m.dayCount, m.maxItemDay, state.manualDays, 1);
   if (state.day > total) state.day = total;
+  const day = state.day;
 
-  const s = parseYmd(state.trip && state.trip.startDate);
   const tabs = $('#day-tabs');
   tabs.textContent = '';
   for (let d = 1; d <= total; d++) {
     tabs.append(h('button', {
       type: 'button',
       class: 'day-tab',
-      'aria-selected': String(d === state.day),
-      onclick: () => { state.day = d; try { localStorage.setItem('trip.day', String(d)); } catch (e) { /* 무시 */ } renderPlan(); }
-    }, d + '일차'));
+      'aria-selected': String(d === day),
+      onclick: () => {
+        state.day = d;
+        try { localStorage.setItem('trip.day', String(d)); } catch (e) { /* 무시 */ }
+        legImmediate = true; // 일차 화면을 열 때는 바로 요청
+        renderPlan();
+      }
+    }, d + '일차' + (m.valid && d > m.dayCount ? ' (날짜 밖)' : '')));
   }
   tabs.append(h('button', {
     type: 'button', class: 'day-tab', 'aria-label': '일차 추가',
     onclick: () => { state.manualDays = total + 1; state.day = total + 1; renderPlan(); }
   }, '+'));
 
-  $('#day-title').textContent = state.day + '일차' + (s != null ? '  ' + fmtDate(s + (state.day - 1) * DAY_MS) : '');
+  const date = m.dateOfDay(day);
+  $('#day-title').textContent = day + '일차' + (date ? '  ' + fmtDate(date) : '');
+
+  const warn = $('#day-warn');
+  warn.textContent = '';
+  if (m.valid && day > m.dayCount) warn.append(h('div', { class: 'w warn' }, '여행 날짜 밖 일차예요. 일정은 그대로 남아 있어요.'));
+  if (!m.valid && m.source !== 'none') warn.append(h('div', { class: 'w error' }, '날짜 계산 오류. 설정 화면에서 항공편을 확인하세요.'));
+  m.nightAssign.filter(n => n.status === 'overlap' && (n.k === day || n.k === day - 1))
+    .forEach(n => warn.append(h('div', { class: 'w warn' }, n.k + '박 숙소가 겹쳐요. 체크인이 가장 늦은 숙소를 씁니다.')));
+  warn.hidden = !warn.childNodes.length;
 
   const list = $('#day-items');
   if (state.editingItemId && list.querySelector('[data-id="' + state.editingItemId + '"] input')) return;
   list.textContent = '';
-  const items = dayItems(state.day);
-  items.forEach((it, idx) => list.append(itemCard(it, idx, items.length)));
-  $('#day-empty').hidden = items.length > 0;
+  const cards = dayCards(day);
+  const seq = TC.daySequence(m, day, cards);
+  const slots = legSlots(m, day, seq);
+  let userIdx = 0;
+  seq.forEach((e, i) => {
+    if (e.kind === 'anchor') list.append(anchorCard(e));
+    else list.append(itemCard(e.item, userIdx++, cards.length));
+    if (i < slots.length) list.append(legBadge(slots[i]));
+  });
+  $('#day-empty').hidden = cards.length > 0;
+
+  // 기준 시각(한 번만)과 출처 표기
+  const entries = slots.filter(s => s.pair).map(s => {
+    const r = legs.get(legKey(s.pair));
+    return r && r.leg && r.leg.status === 'ok' ? { leg: r.leg, at: s.pair.at } : null;
+  }).filter(Boolean);
+  const basis = TC.basisText(entries);
+  $('#day-basis').textContent = basis;
+  $('#day-basis').hidden = !basis;
+  $('#legs-credit').hidden = !entries.length;
+
+  // 지도 관련 버튼은 embedKey 가 있을 때만
+  $('#route-btn').hidden = !(CONFIG.embedKey && TC.routePoints(seq).points.length >= 2);
 
   if (state.focusEdit) {
     state.focusEdit = false;
     const input = list.querySelector('.first-input');
     if (input) input.focus();
   }
+
+  if (slots.some(s => s.pair) && legs.missing(slots.filter(s => s.pair).map(s => s.pair)).length) scheduleLegs();
+}
+
+function goSettings(target) {
+  showTab('settings');
+  const el = document.getElementById(target === 'lodgings' ? 'sec-lodgings' : 'sec-flights');
+  if (el) el.scrollIntoView({ block: 'start' });
+}
+
+// 가상 카드: 저장하지 않고 삭제, 이동, 편집이 없다. 탭하면 해당 입력 화면으로 이동한다.
+function anchorCard(e) {
+  const sub = e.role === 'missing' ? '탭해서 숙소를 추가하세요'
+    : !e.placeId ? '장소 ID 없음: 이동시간 계산 불가' : '';
+  return h('li', { class: 'card anchor' + (e.role === 'missing' ? ' missing' : ''), 'data-anchor': e.role },
+    h('button', { type: 'button', class: 'anchor-btn', onclick: () => goSettings(e.target) },
+      h('div', { class: 'a-label' }, e.label),
+      sub ? h('div', { class: 'a-sub' }, sub) : null));
+}
+
+// 구간 배지 하나. 표시: "도보 12분 · 0.9km | 대중교통 8분 · 1.4km" (항상 둘 다)
+function legBadge(slot) {
+  const stat =text => h('li', null, h('div', { class: 'leg static' }, text));
+  if (slot.elig === 'excluded') return stat('계산 제외 (숙소 미지정)');
+  if (slot.elig === 'noid') return stat('계산 불가 (장소 ID 없음)');
+
+  const key = legKey(slot.pair);
+  const r = legs.get(key);
+  if (!r || r.pending) return h('li', null, h('div', { class: 'leg skeleton', 'aria-busy': 'true' }, '이동시간 확인 중'));
+
+  const retry = () => {
+    legs.retry([slot.pair]).then(() => renderPlan());
+    renderPlan(); // 스켈레톤
+  };
+  if (r.failed) {
+    return h('li', null, h('button', { type: 'button', class: 'leg', onclick: retry }, '확인 실패. 탭해서 다시 시도'));
+  }
+  const leg = r.leg;
+  if (leg.status === 'no_place_id') return stat('계산 불가 (장소 ID 없음)');
+  if (leg.status === 'same') return stat('같은 장소');
+
+  const w = TC.fmtMode('도보', leg.walk, CONFIG.walkWarnMin);
+  const t = TC.fmtMode('대중교통', leg.transit, null);
+  const hasError = w.state === 'error' || t.state === 'error';
+  const onTap = hasError
+    ? retry                                            // 실패가 있으면 탭 = 수동 재시도
+    : (CONFIG.embedKey ? () => openLegMap(slot, leg) : null);
+  const inner = [
+    h('span', { class: 'mode' + (w.warn ? ' warn' : '') }, w.text),
+    h('span', { class: 'sep' }, '|'),
+    h('span', { class: 'mode' }, t.text)
+  ];
+  return h('li', null, onTap
+    ? h('button', { type: 'button', class: 'leg', onclick: onTap }, inner)
+    : h('div', { class: 'leg static' }, inner));
+}
+
+/* ---------- 구간 지도 / 일차 전체 경로 (Embed directions) ---------- */
+
+// URLSearchParams 로 만든다. place_id: 접두사와 | 구분자는 퍼센트 인코딩되지만 디코딩하면 원래 값이 된다.
+function embedSrc(params) {
+  const u = new URL('https://www.google.com/maps/embed/v1/directions');
+  u.searchParams.set('key', CONFIG.embedKey);
+  Object.keys(params).forEach(k => u.searchParams.set(k, params[k]));
+  return u.toString();
+}
+
+function embedFrame(src) {
+  return h('iframe', {
+    class: 'embed', src, title: '경로 지도',
+    referrerpolicy: 'strict-origin-when-cross-origin', loading: 'lazy', allowfullscreen: true
+  });
+}
+
+function openLegMap(slot, leg) {
+  const walkMin = leg.walk && leg.walk.status === 'ok' ? TC.minutesOf(leg.walk.sec) : null;
+  // 기본값: 도보 시간이 walkWarnMin 미만이면 walking, 이상이면 transit. 도보 정보가 없으면 transit.
+  let mode = walkMin != null && walkMin < CONFIG.walkWarnMin ? 'walking' : 'transit';
+  openSheet(close => {
+    const box = h('div', null);
+    const wBtn = h('button', { type: 'button', class: 'btn', onclick: () => { mode = 'walking'; draw(); } }, '도보');
+    const tBtn = h('button', { type: 'button', class: 'btn', onclick: () => { mode = 'transit'; draw(); } }, '대중교통');
+    const draw = () => {
+      wBtn.setAttribute('aria-pressed', String(mode === 'walking'));
+      tBtn.setAttribute('aria-pressed', String(mode === 'transit'));
+      box.textContent = '';
+      box.append(embedFrame(embedSrc({
+        origin: 'place_id:' + slot.pair.from,
+        destination: 'place_id:' + slot.pair.to,
+        mode
+      })));
+    };
+    draw();
+    return h('div', null,
+      h('h3', null, '구간 지도'),
+      h('div', { class: 'label' }, entryName(slot.a) + ' -> ' + entryName(slot.b)),
+      h('div', { class: 'seg' }, wBtn, tBtn),
+      box,
+      h('button', { type: 'button', class: 'btn block', onclick: close }, '닫기'));
+  });
+}
+
+function entryName(e) {
+  return e.kind === 'card' ? itemTitle(e.item) : e.label;
+}
+
+// 일차 전체 경로: 시작 앵커 + placeId 있는 카드 + 끝 앵커, 도보 고정. 22곳(출발 1 + 경유 20 + 도착 1)씩 나눈다.
+function openRouteSheet() {
+  const m = model();
+  const day = state.day;
+  const seq = TC.daySequence(m, day, dayCards(day));
+  const { points, excluded } = TC.routePoints(seq);
+  const chunks = TC.chunkRoute(points, 22);
+  if (!chunks.length) { toast('경로를 만들 곳이 2곳 이상 필요해요'); return; }
+  openSheet(close => {
+    const kids = [h('h3', null, day + '일차 전체 경로 (도보)')];
+    if (excluded) kids.push(h('div', { class: 'label' }, excluded + '곳 제외됨 (장소 ID 없음)'));
+    if (chunks.length > 1) kids.push(h('div', { class: 'label' }, '22곳을 넘어 ' + chunks.length + '개 구간으로 나눴어요. 각 구간은 이어져 있어요.'));
+    chunks.forEach((c, i) => {
+      const params = { origin: 'place_id:' + c[0], destination: 'place_id:' + c[c.length - 1], mode: 'walking' };
+      if (c.length > 2) params.waypoints = c.slice(1, -1).map(id => 'place_id:' + id).join('|');
+      if (chunks.length > 1) kids.push(h('div', { class: 'label' }, (i + 1) + '/' + chunks.length + ' 구간 (' + c.length + '곳)'));
+      kids.push(embedFrame(embedSrc(params)));
+    });
+    kids.push(h('button', { type: 'button', class: 'btn block', onclick: close }, '닫기'));
+    return h('div', null, ...kids);
+  });
 }
 
 function itemCard(it, idx, n) {
@@ -586,7 +799,8 @@ function itemCard(it, idx, n) {
     h('button', { type: 'button', class: 'btn', disabled: idx === n - 1, 'aria-label': '아래로', onclick: () => moveItem(it, 1) }, '아래'),
     h('button', { type: 'button', class: 'btn', onclick: () => { state.editingItemId = it.id; state.focusEdit = true; renderPlan(); } }, '수정')));
   card.append(h('div', { class: 'row' },
-    p && p.mapUrl ? h('a', { class: 'btn', href: p.mapUrl, target: '_blank', rel: 'noopener' }, '지도 열기') : null,
+    p && mapOpenUrl(p, CONFIG.destinationCity)
+      ? h('a', { class: 'btn', href: mapOpenUrl(p, CONFIG.destinationCity), target: '_blank', rel: 'noopener' }, '지도 열기') : null,
     h('button', { type: 'button', class: 'btn danger', onclick: () => removeItem(it) }, '배정 해제')));
   return card;
 }
@@ -704,29 +918,362 @@ function openDatesSheet() {
           // merge: 문서가 아직 없어도 안전하고, 다른 필드(name, currencies)는 건드리지 않는다.
           setDoc(tripRef, { startDate: start.value, endDate: end.value }, { merge: true }).catch(fail('저장'));
           state.trip = Object.assign({}, state.trip, { startDate: start.value, endDate: end.value });
-          renderHeader();
-          renderPlan();
+          renderAll();
           close();
         }
       }, '저장'))
   ));
 }
 
+/* ---------- 설정: 항공편 / 숙소 / 내보내기 ---------- */
+
+const IATA_RE = /^[A-Z]{3}$/;
+const upper = s => String(s || '').trim().toUpperCase();
+
+// Worker GET /airport?code=TPE[&name=힌트]. 최대 3개 후보. 사용자 탭 1번 = 호출 1번, 자동 재시도 없음.
+async function callAirport(code, hint) {
+  if (!CONFIG.resolverUrl) return { kind: 'failed', reason: 'off' };
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), RESOLVER_TIMEOUT_MS);
+  try {
+    let url = CONFIG.resolverUrl + '/airport?code=' + encodeURIComponent(code);
+    if (hint) url += '&name=' + encodeURIComponent(hint);
+    const res = await fetch(url, { signal: ctl.signal });
+    let j = null;
+    try { j = await res.json(); } catch (e) { return { kind: 'failed', reason: 'not_json' }; }
+    if (res.status === 403) console.error('[airport] 403 origin_not_allowed: resolver의 ALLOWED_ORIGINS를 확인하세요', j);
+    else if (res.status === 503) console.error('[airport] 503 no_key: Worker 의 GOOGLE_PLACES_KEY 를 확인하세요', j);
+    else if (res.status === 502) console.error('[airport] 502 places_failed, places_status=' + (j && j.places_status), j);
+    else if (!res.ok || !j || j.success === false) console.error('[airport] http ' + res.status, j && j.error, j && j.detail);
+    if (!res.ok || !j || j.success === false) return { kind: 'failed', reason: (j && j.error) || 'http_' + res.status };
+    const c = (Array.isArray(j.candidates) ? j.candidates : []).filter(x => x && x.placeId).slice(0, 3);
+    return { kind: 'ok', candidates: c };
+  } catch (e) {
+    return { kind: 'failed', reason: e && e.name === 'AbortError' ? 'timeout' : 'network' };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function saveFlight(id, data, prev) {
+  const isOut = id === 'out';
+  const dest = isOut ? data.arrIata : data.depIata;
+  const patch = Object.assign({}, data);
+  // 목적지 쪽 IATA 가 바뀌면 이전에 확정한 공항은 더 이상 유효하지 않다.
+  if (prev && prev.destAirport && prev.destAirport.iata !== dest) patch.destAirport = null;
+  state.flights[id] = Object.assign({ id }, prev || {}, patch);
+  setDoc(doc(flightsCol, id), patch, { merge: true }).catch(fail('항공편 저장'));
+}
+
+function flightBox(id) {
+  const isOut = id === 'out';
+  const f = state.flights[id] || {};
+  const flightNo = h('input', { class: 'input', type: 'text', value: f.flightNo || '', placeholder: '편명 (선택)' });
+  const depIata = h('input', { class: 'input', type: 'text', maxlength: '3', value: f.depIata || '', placeholder: '출발 IATA', autocapitalize: 'characters' });
+  const arrIata = h('input', { class: 'input', type: 'text', maxlength: '3', value: f.arrIata || '', placeholder: '도착 IATA', autocapitalize: 'characters' });
+  const depLocal = h('input', { class: 'input', type: 'datetime-local', value: f.depLocal || '' });
+  const arrLocal = h('input', { class: 'input', type: 'datetime-local', value: f.arrLocal || '' });
+  const memo = h('input', { class: 'input', type: 'text', value: f.memo || '', placeholder: '메모 (선택)' });
+  const apBox = h('div', { class: 'ap-ok' });
+
+  const destLabel = isOut ? '도착' : '출국';
+  const ap = f.destAirport;
+  if (ap && ap.placeId) {
+    apBox.append(h('div', null, destLabel + ' 공항 확정: ' + (ap.name || ap.iata) + ' (' + ap.iata + ')'));
+  } else {
+    apBox.append(h('div', { class: 'notice info' }, destLabel + ' 공항이 확정되지 않았어요. 저장한 뒤 "공항 확정"을 누르세요.'));
+  }
+  apBox.append(h('button', { type: 'button', class: 'btn small', style: 'margin-top:8px', onclick: () => openAirportSheet(id) },
+    ap && ap.placeId ? '공항 다시 지정' : '공항 확정'));
+
+  const save = () => {
+    const d = {
+      flightNo: flightNo.value.trim(),
+      depIata: upper(depIata.value), arrIata: upper(arrIata.value),
+      depLocal: depLocal.value, arrLocal: arrLocal.value,
+      memo: memo.value.trim()
+    };
+    if ((d.depIata && !IATA_RE.test(d.depIata)) || (d.arrIata && !IATA_RE.test(d.arrIata))) { toast('IATA 는 영문 3글자예요 (예: TPE)'); return; }
+    if ((d.depLocal && !TC.isLocalDT(d.depLocal)) || (d.arrLocal && !TC.isLocalDT(d.arrLocal))) { toast('일시 형식을 확인하세요'); return; }
+    saveFlight(id, d, state.flights[id]);
+    toast('저장했음');
+    renderSettings(); renderPlan(); renderHeader();
+  };
+
+  return h('div', { class: 'panel fbox' },
+    h('h3', null, isOut ? '가는 편' : '오는 편'),
+    flightNo,
+    h('div', { class: 'two' },
+      h('div', null, h('div', { class: 'label' }, isOut ? '출발 (집 쪽) IATA' : '출발 (여행지) IATA'), depIata),
+      h('div', null, h('div', { class: 'label' }, isOut ? '도착 (여행지) IATA' : '도착 (집 쪽) IATA'), arrIata)),
+    h('div', { class: 'label' }, '출발 일시 (현지 시각 그대로)'), depLocal,
+    h('div', { class: 'label' }, '도착 일시 (현지 시각 그대로)'), arrLocal,
+    memo, apBox,
+    h('button', { type: 'button', class: 'btn primary block', onclick: save }, '항공편 저장'));
+}
+
+// 목적지 쪽 공항 place ID 확정: /airport 후보 탭, 이름 힌트 재검색, 구글맵 링크 지정.
+function openAirportSheet(id) {
+  const isOut = id === 'out';
+  const f = state.flights[id] || {};
+  const code = upper(isOut ? f.arrIata : f.depIata);
+  if (!IATA_RE.test(code)) { toast('IATA 3글자를 입력하고 저장하세요'); return; }
+  openSheet(close => {
+    const list = h('div', null);
+    const linkBox = h('div', null);
+    const hint = h('input', { class: 'input', type: 'text', placeholder: '공항 이름 힌트 (예: Taoyuan International Airport)' });
+    const link = h('input', { class: 'input', type: 'text', placeholder: '구글맵 링크 붙여넣기' });
+
+    const confirmAirport = ap => {
+      const prev = state.flights[id] || {};
+      state.flights[id] = Object.assign({ id }, prev, { destAirport: ap });
+      setDoc(doc(flightsCol, id), { destAirport: ap }, { merge: true }).catch(fail('공항 확정'));
+      close();
+      toast('공항을 확정했어요');
+      renderSettings(); renderPlan();
+    };
+
+    const search = async nameHint => {
+      list.textContent = '';
+      list.append(h('div', { class: 'label' }, '검색 중'));
+      const r = await callAirport(code, nameHint);
+      list.textContent = '';
+      if (r.kind !== 'ok') {
+        list.append(h('div', { class: 'notice' }, '공항 조회에 실패했어요. 이름 힌트로 다시 찾거나 구글맵 링크로 지정하세요.'));
+        return;
+      }
+      if (!r.candidates.length) {
+        list.append(h('div', { class: 'notice' }, '후보가 없어요. 이름 힌트로 다시 찾거나 구글맵 링크로 지정하세요.'));
+        return;
+      }
+      r.candidates.forEach(c => list.append(h('button', {
+        type: 'button', class: 'pick',
+        onclick: () => confirmAirport({ iata: code, placeId: c.placeId, name: c.name || code })
+      }, c.name || c.placeId)));
+    };
+
+    const byLink = async () => {
+      const url = extractMapUrl(link.value);
+      linkBox.textContent = '';
+      if (!url) { linkBox.append(h('div', { class: 'notice' }, '구글맵 링크가 아니에요')); return; }
+      linkBox.append(h('div', { class: 'label' }, '확인 중'));
+      const r = await callResolver(url);
+      const d = buildDraft(url, r);
+      linkBox.textContent = '';
+      if (!d.placeId) {
+        linkBox.append(h('div', { class: 'notice' }, '장소 ID를 얻지 못했어요. 다른 링크를 붙여넣어 보세요.'));
+        return;
+      }
+      const nameIn = h('input', { class: 'input', type: 'text', value: d.name || '', placeholder: '공항 이름' });
+      linkBox.append(
+        d.notice ? h('div', { class: 'notice' }, d.notice) : null,
+        nameIn,
+        d.address ? h('div', { class: 'address-box' }, h('span', { class: 'address' }, d.address), h('span', { class: 'attrib' }, 'Google Maps')) : null,
+        h('button', {
+          type: 'button', class: 'btn primary block',
+          onclick: () => confirmAirport({ iata: code, placeId: d.placeId, name: singleLine(nameIn.value) || code })
+        }, '이 공항으로 확정'));
+    };
+
+    search(undefined); // 열 때 한 번만 조회
+    return h('div', null,
+      h('h3', null, (isOut ? '도착' : '출국') + ' 공항 확정 (' + code + ')'),
+      h('div', { class: 'label' }, '후보를 탭해서 확정하세요'),
+      list,
+      h('div', { class: 'label' }, '이름 힌트로 다시 찾기'),
+      hint,
+      h('button', { type: 'button', class: 'btn block', onclick: () => search(hint.value.trim() || undefined) }, '재검색'),
+      h('div', { class: 'label', style: 'margin-top:12px' }, '구글맵 링크로 직접 지정'),
+      link,
+      h('button', { type: 'button', class: 'btn block', onclick: byLink }, '링크로 지정'),
+      linkBox,
+      h('button', { type: 'button', class: 'btn ghost block', onclick: close }, '닫기'));
+  });
+}
+
+async function deleteLodging(l) {
+  const c = await choose('숙소 삭제', '"' + (l.name || '이름 없음') + '" 을(를) 삭제할까?',
+    [{ label: '취소', value: 'cancel' }, { label: '삭제', value: 'delete', kind: 'danger' }]);
+  if (c !== 'delete') return;
+  state.lodgings = state.lodgings.filter(x => x.id !== l.id);
+  deleteDoc(doc(lodgingsCol, l.id)).catch(fail('삭제'));
+  renderSettings(); renderPlan();
+}
+
+// 숙소 추가/수정. 추가는 구글맵 링크 -> 기존 링크 해석 흐름 재사용 -> 이름 확정 -> 체크인/체크아웃.
+// 숙소는 장소 풀(pool)에 넣지 않는다. address 는 미리보기 전용이라 저장하지 않는다.
+function openLodgingSheet(existing) {
+  const m = model();
+  let draft = existing
+    ? { name: existing.name || '', address: '', notice: '', focus: false, rawTitle: existing.rawTitle || '', placeId: existing.placeId || null,
+        fid: existing.fid || null, cid: existing.cid || null, mapUrl: existing.mapUrl || '', checkIn: existing.checkIn || '', checkOut: existing.checkOut || '', memo: existing.memo || '' }
+    : null;
+  openSheet(close => {
+    const root = h('div', null);
+    const draw = () => {
+      root.textContent = '';
+      if (!draft) {
+        const paste = h('textarea', { class: 'input', rows: '3', placeholder: '숙소의 구글맵 링크 붙여넣기' });
+        const check = h('button', { type: 'button', class: 'btn primary grow' }, '장소 확인');
+        check.addEventListener('click', async () => {
+          const text = paste.value;
+          if (!text.trim()) { toast('붙여넣은 내용이 없어요'); return; }
+          const url = extractMapUrl(text);
+          if (!url) {
+            draft = { mapUrl: '', name: '', address: '', rawTitle: '', placeId: null, fid: null, cid: null, notice: MSG_NO_LINK, focus: true };
+          } else {
+            check.disabled = true; check.textContent = '확인 중';
+            draft = buildDraft(url, await callResolver(url));
+          }
+          draw();
+        });
+        root.append(h('h3', null, '숙소 추가'), paste,
+          h('div', { class: 'row' }, h('button', { type: 'button', class: 'btn ghost', onclick: close }, '취소'), check));
+        return;
+      }
+      const nameIn = h('input', { class: 'input', type: 'text', value: draft.name, placeholder: '숙소 이름' });
+      // 기본값 = 여행 시작일/종료일(여행 날짜가 없으면 직접 입력)
+      const inIn = h('input', { class: 'input', type: 'date', value: draft.checkIn || (m.valid ? m.range.start : '') });
+      const outIn = h('input', { class: 'input', type: 'date', value: draft.checkOut || (m.valid ? m.range.end : '') });
+      const memoIn = h('input', { class: 'input', type: 'text', value: draft.memo || '', placeholder: '메모 (선택)' });
+      const save = () => {
+        const name = singleLine(nameIn.value); // 사용자가 화면에서 확인한 값
+        if (!name) { toast('숙소 이름을 입력하세요'); nameIn.focus(); return; }
+        const ci = inIn.value, co = outIn.value;
+        if (parseYmd(ci) == null || parseYmd(co) == null || co <= ci) { toast('체크인/체크아웃 날짜를 확인하세요 (최소 1박)'); return; }
+        if (existing) {
+          const patch = { name, checkIn: ci, checkOut: co, memo: memoIn.value.trim() };
+          Object.assign(existing, patch);
+          updateDoc(doc(lodgingsCol, existing.id), patch).catch(fail('숙소 수정'));
+        } else {
+          const ref = doc(lodgingsCol);
+          const data = {
+            name, rawTitle: draft.rawTitle || '', placeId: draft.placeId, fid: draft.fid, cid: draft.cid, mapUrl: draft.mapUrl,
+            checkIn: ci, checkOut: co, memo: memoIn.value.trim(), createdAt: Date.now()
+          };
+          state.lodgings.push({ id: ref.id, ...data });
+          setDoc(ref, data).catch(fail('숙소 저장'));
+        }
+        close();
+        toast('숙소를 저장했어요');
+        renderSettings(); renderPlan();
+      };
+      nameIn.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); save(); } });
+      root.append(
+        h('h3', null, existing ? '숙소 수정' : '숙소 추가'),
+        draft.notice ? h('div', { class: 'notice' }, draft.notice) : null,
+        h('div', { class: 'label' }, '이름 (탭해서 고칠 수 있음)'), nameIn,
+        draft.address ? h('div', { class: 'address-box' }, h('span', { class: 'address' }, draft.address), h('span', { class: 'attrib' }, 'Google Maps')) : null,
+        h('div', { class: 'two' },
+          h('div', null, h('div', { class: 'label' }, '체크인'), inIn),
+          h('div', null, h('div', { class: 'label' }, '체크아웃'), outIn)),
+        memoIn,
+        h('div', { class: 'row' },
+          h('button', { type: 'button', class: 'btn ghost', onclick: existing ? close : () => { draft = null; draw(); } }, existing ? '취소' : '뒤로'),
+          h('button', { type: 'button', class: 'btn primary grow', onclick: save }, '저장')));
+      if (draft.focus) { nameIn.focus(); nameIn.select(); }
+    };
+    draw();
+    return root;
+  });
+}
+
+function renderLodgings(m) {
+  const box = $('#lodgings-box');
+  box.textContent = '';
+  const list = state.lodgings.slice().sort((a, b) => (a.checkIn || '').localeCompare(b.checkIn || '') || ((a.createdAt || 0) - (b.createdAt || 0)));
+  list.forEach(l => {
+    const n = TC.nightsOf(l.checkIn, l.checkOut);
+    box.append(h('div', { class: 'lod' },
+      h('div', { class: 'l-name' }, l.name || '(이름 없음)'),
+      h('div', { class: 'l-sub' }, (l.checkIn || '?') + ' ~ ' + (l.checkOut || '?') + (n != null ? ' · ' + n + '박' : '')),
+      l.placeId ? null : h('div', { class: 'l-sub' }, '장소 ID 없음: 이동시간 계산 불가'),
+      h('div', { class: 'row' },
+        h('button', { type: 'button', class: 'btn small', onclick: () => openLodgingSheet(l) }, '수정'),
+        h('button', { type: 'button', class: 'btn small danger', onclick: () => deleteLodging(l) }, '삭제'))));
+  });
+  if (!list.length) box.append(h('div', { class: 'empty' }, '등록된 숙소가 없음'));
+  box.append(h('button', { type: 'button', class: 'btn primary block', onclick: () => openLodgingSheet(null) }, '숙소 추가'));
+
+  if (m.valid && m.nights > 0) {
+    const nl = h('div', { class: 'night-list' }, h('div', { class: 'label' }, '밤별 배정'));
+    m.nightAssign.forEach(n => {
+      const text = n.k + '박 (' + fmtMD(n.date) + '): ' +
+        (n.status === 'ok' ? '정상 · ' + (n.lodging.name || '') : n.status === 'none' ? '미지정' : '겹침 · ' + n.all.map(x => x.name).join(', '));
+      nl.append(h('div', { class: n.status === 'ok' ? '' : n.status }, text));
+    });
+    box.append(nl);
+  }
+}
+
+function renderSettings() {
+  // 입력 중인 칸이 있으면 다른 기기의 변경으로 입력이 날아가지 않게 미룬다.
+  const a = document.activeElement;
+  if (a && $('#tab-settings').contains(a) && a.matches('input, textarea')) return;
+  const m = model();
+  const sum = $('#trip-summary');
+  sum.textContent = m.valid
+    ? fmtMD(m.range.start) + ' ~ ' + fmtMD(m.range.end) + ' · ' + m.dayCount + '일 ' + m.nights + '박' + (m.source === 'manual' ? ' (직접 입력)' : '')
+    : (m.source === 'none' ? '항공편을 입력하면 여행 날짜가 계산돼요' : '날짜를 계산할 수 없어요');
+  const wl = $('#trip-warns');
+  wl.textContent = '';
+  m.warnings.forEach(w => wl.append(h('div', { class: 'w ' + w.level }, w.text)));
+  const fb = $('#flights-box');
+  fb.textContent = '';
+  fb.append(flightBox('out'), flightBox('in'));
+  renderLodgings(m);
+}
+
+// JSON 내보내기: 해당 tripId 의 trip, pool, items, expenses, members, flights, lodgings 전체.
+// 이동시간과 거리는 저장한 적이 없으므로 포함되지 않는다.
+async function exportJson() {
+  try {
+    const all = async name => (await getDocs(collection(tripRef, name))).docs.map(d => ({ id: d.id, ...d.data() }));
+    const tripSnap = await getDoc(tripRef);
+    const data = {
+      exportedAt: new Date().toISOString(),
+      tripId: CONFIG.tripId,
+      trip: tripSnap.exists() ? tripSnap.data() : null,
+      pool: await all('pool'),
+      items: await all('items'),
+      expenses: await all('expenses'),
+      members: await all('members'),
+      flights: await all('flights'),
+      lodgings: await all('lodgings')
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const a = h('a', { href: URL.createObjectURL(blob), download: 'trip-' + data.exportedAt.slice(0, 10) + '.json' });
+    document.body.append(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  } catch (e) {
+    fail('내보내기')(e);
+  }
+}
+
 /* ---------- 헤더, 탭, 초기화 ---------- */
 
 function renderHeader() {
   $('#trip-name').textContent = CONFIG.tripName;
-  const t = state.trip;
-  const s = parseYmd(t && t.startDate), e = parseYmd(t && t.endDate);
-  $('#trip-sub').textContent = (s != null && e != null) ? fmtDate(s) + ' - ' + fmtDate(e) : '';
+  const m = model();
+  $('#trip-sub').textContent = m.valid ? fmtDate(m.range.start) + ' - ' + fmtDate(m.range.end) : '';
+}
+
+function renderAll() {
+  renderHeader();
+  renderPlan();
+  renderSettings();
 }
 
 function showTab(name) {
   state.tab = name;
   $('#tab-pool').hidden = name !== 'pool';
   $('#tab-plan').hidden = name !== 'plan';
+  $('#tab-settings').hidden = name !== 'settings';
   document.querySelectorAll('.tabbar button').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
-  if (name === 'plan') renderPlan();
+  if (name === 'plan') { legImmediate = true; renderPlan(); } // 일차 화면을 열 때
+  if (name === 'settings') renderSettings();
   window.scrollTo(0, 0);
 }
 
@@ -738,8 +1285,7 @@ function subscribe() {
       // 서버가 "없음"이라고 확인해 준 경우에만 최초 생성한다(캐시 미스로 기존 값을 덮는 사고 방지).
       setDoc(tripRef, { name: CONFIG.tripName, startDate: null, endDate: null, currencies: [] }).catch(fail('여행 생성'));
     }
-    renderHeader();
-    renderPlan();
+    renderAll();
   }, fail('여행 정보 읽기'));
 
   onSnapshot(poolCol, snap => {
@@ -752,8 +1298,20 @@ function subscribe() {
     state.items = snap.docs.map(d => ({ id: d.id, ...d.data() }));
     state.itemsLoaded = true;
     renderPool();
-    renderPlan();
+    renderAll();
   }, fail('일정 읽기'));
+
+  onSnapshot(flightsCol, snap => {
+    const f = { out: null, in: null };
+    snap.docs.forEach(d => { if (d.id === 'out' || d.id === 'in') f[d.id] = { id: d.id, ...d.data() }; });
+    state.flights = f;
+    renderAll();
+  }, fail('항공편 읽기'));
+
+  onSnapshot(lodgingsCol, snap => {
+    state.lodgings = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    renderAll();
+  }, fail('숙소 읽기'));
 }
 
 function init() {
@@ -776,6 +1334,8 @@ function init() {
   $('#clear-btn').addEventListener('click', () => { $('#paste').value = ''; });
   $('#add-item-btn').addEventListener('click', openAddSheet);
   $('#dates-btn').addEventListener('click', openDatesSheet);
+  $('#route-btn').addEventListener('click', openRouteSheet);
+  $('#export-btn').addEventListener('click', exportJson);
   document.querySelectorAll('.tabbar button').forEach(b => b.addEventListener('click', () => showTab(b.dataset.tab)));
 
   subscribe();
