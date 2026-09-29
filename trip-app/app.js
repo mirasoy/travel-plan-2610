@@ -2,7 +2,7 @@ import { CONFIG } from './config.js';
 import {
   db, doc, collection, setDoc, updateDoc, deleteDoc, onSnapshot, writeBatch
 } from './firebase.js';
-import { parseShare, joinShareParams, urlKey } from './parse.js';
+import { parseShare, joinShareParams, urlKey, placeNameFromUrl } from './parse.js';
 
 const CATS = [
   ['sight', '관광'], ['food', '식당'], ['massage', '마사지'], ['cafe', '카페'], ['etc', '기타']
@@ -173,7 +173,7 @@ async function savePool() {
     Object.assign(dup, patch);
     updateDoc(doc(poolCol, dup.id), patch).catch(fail('덮어쓰기'));
     finishSave();
-    if (!dup.name) startPoolEdit(dup.id);
+    if (!dup.name) { startPoolEdit(dup.id); autoFillName(dup.id); }
     toast('덮어썼음');
     return;
   }
@@ -197,11 +197,51 @@ async function savePool() {
   if (!name) {
     // URL 만 있고 이름이 없음: 링크는 저장했고, 이름 입력칸에 바로 포커스
     startPoolEdit(ref.id);
-    toast('링크 저장됨. 이름을 입력하세요');
+    toast(CONFIG.resolverUrl ? '링크 저장됨. 이름을 조회하는 중' : '링크 저장됨. 이름을 입력하세요');
+    autoFillName(ref.id);
   } else {
     renderPool();
     toast('저장했음');
   }
+}
+
+// 이름 자동 조회. 풀 URL 이면 URL 에서 바로 읽고, 단축 링크면 resolverUrl 워커가 돌려준 full_url 에서 읽는다.
+// 실패해도 저장된 링크와 직접 입력 흐름에는 영향이 없다.
+async function fetchPlaceName(mapUrl) {
+  const local = placeNameFromUrl(mapUrl);
+  if (local) return local;
+  if (!CONFIG.resolverUrl) return '';
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), 8000);
+  try {
+    const res = await fetch(CONFIG.resolverUrl + '?url=' + encodeURIComponent(mapUrl), { signal: ctl.signal });
+    const j = await res.json();
+    return j && j.success && j.full_url ? placeNameFromUrl(j.full_url) : '';
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+const resolving = new Set();
+async function autoFillName(id) {
+  const p = state.pool.find(x => x.id === id);
+  if (!p || p.name || !p.mapUrl || resolving.has(id)) return;
+  resolving.add(id);
+  let name = '';
+  try { name = await fetchPlaceName(p.mapUrl); } catch (e) { console.error('resolver', e); }
+  resolving.delete(id);
+
+  const cur = state.pool.find(x => x.id === id);
+  if (!cur || cur.name) return; // 그 사이 삭제됐거나 이름이 채워짐
+  if (!name) { toast('이름 자동 조회 실패. 직접 입력하세요'); return; }
+  const input = state.editingPoolId === id ? $('#pool-list [data-id="' + id + '"] .name-input') : null;
+  if (input && input.value.trim()) return; // 사용자가 입력 중이면 덮어쓰지 않는다
+  cur.name = name;
+  updateDoc(doc(poolCol, id), { name }).catch(fail('이름 저장'));
+  if (state.editingPoolId === id) state.editingPoolId = null;
+  renderPool();
+  renderPlan();
+  toast('이름 자동 입력: ' + name);
 }
 
 function finishSave() {
@@ -287,6 +327,10 @@ function poolCard(p) {
     card.append(h('div', { class: 'row' },
       p.mapUrl ? h('a', { class: 'btn', href: p.mapUrl, target: '_blank', rel: 'noopener' }, '지도 열기') : null,
       h('button', { type: 'button', class: 'btn danger', onclick: () => deletePool(p) }, '삭제')));
+    if (!p.name && p.mapUrl && CONFIG.resolverUrl) {
+      card.append(h('div', { class: 'row' },
+        h('button', { type: 'button', class: 'btn', onclick: () => autoFillName(p.id) }, '이름 자동 입력')));
+    }
   }
   return card;
 }
