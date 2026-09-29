@@ -234,6 +234,13 @@ export function chunkRoute(points, size) {
 
 export const minutesOf = sec => Math.ceil(sec / 60);
 
+// 분 -> 표시. 60분 미만은 "N분", 60분 이상은 "N시간 M분"(M 이 0이면 "N시간").
+export function fmtDuration(min) {
+  if (min < 60) return min + '분';
+  const h = Math.floor(min / 60), m = min % 60;
+  return m === 0 ? h + '시간' : h + '시간 ' + m + '분';
+}
+
 export function fmtDist(m) {
   if (m < 1000) {
     const r = Math.round(m / 10) * 10;
@@ -248,7 +255,7 @@ export function fmtMode(label, mode, warnMin) {
   if (!mode) return { text: label + ' 확인 실패', warn: false, state: 'error' };
   if (mode.status === 'ok') {
     const min = minutesOf(mode.sec);
-    return { text: label + ' ' + min + '분 · ' + fmtDist(mode.m), warn: label === '도보' && warnMin != null && min >= warnMin, state: 'ok', min };
+    return { text: label + ' ' + fmtDuration(min) + ' · ' + fmtDist(mode.m), warn: label === '도보' && warnMin != null && min >= warnMin, state: 'ok', min };
   }
   if (mode.status === 'no_route') return { text: label + ' 경로 없음', warn: false, state: 'no_route' };
   return { text: label + ' 확인 실패', warn: false, state: 'error' };
