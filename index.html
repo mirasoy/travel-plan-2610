@@ -231,7 +231,11 @@ header .sub{font-size:0.82rem;opacity:0.85;margin-bottom:14px;}
 .score-cell{text-align:center;}
 .score-lbl{display:block;font-size:0.62rem;color:#888;font-weight:600;margin-bottom:1px;}
 .score-val{display:block;font-size:0.95rem;font-weight:800;color:#1a202c;}
-.score-total{text-align:center;font-size:0.75rem;font-weight:800;color:#e05c2f;padding:0 0 4px;}</style>
+.score-total{text-align:center;font-size:0.75rem;font-weight:800;color:#e05c2f;padding:0 0 4px;}
+.btn-confirm{display:block;width:100%;text-align:center;background:#fff;color:#c0392b;border:2px solid #c0392b;font-family:inherit;font-size:0.83rem;font-weight:700;padding:10px;border-radius:8px;margin-top:8px;cursor:pointer;}
+.btn-confirm.on{background:#2f6f6a;border-color:#2f6f6a;color:#fff;}
+.confirm-hint{font-size:0.7rem;color:#888;text-align:center;margin-top:4px;}
+.plan-toast{display:none;position:fixed;left:16px;right:16px;bottom:24px;background:#222;color:#fff;padding:12px 14px;border-radius:10px;z-index:300;text-align:center;font-size:0.82rem;}</style>
 </head>
 <body>
 
@@ -768,7 +772,8 @@ header .sub{font-size:0.82rem;opacity:0.85;margin-bottom:14px;}
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore, doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getFirestore, doc, collection, getDoc, setDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { CONFIG } from "./trip-app/config.js"; // 여행플래너와 같은 tripId 를 쓴다
 
 const firebaseConfig = {
   apiKey: "AIzaSyARuzrDMQb4oMYcJywrMNctXopIHeqCNUA",
@@ -858,6 +863,149 @@ async function toggleLike(hotelId, memberName) {
   const update = Object.assign({}, current, { [memberName]: newVal });
   await setDoc(ref, update);
 }
+
+/* ---------- 여행플래너 연동: 항공편/숙소 확정 ----------
+   확정 버튼을 누르면 trips/{tripId}/flights|lodgings 에 바로 쓴다. 여행플래너는 이 문서를 읽어
+   일정 화면에 도착/출국/숙소 카드로 자동 표시한다(일정 항목으로 복사하지 않는다).
+   아래 상수는 이 페이지 카드(헤더 일정 11/14~11/17, 진에어 LJ171/LJ172)의 값이다. 카드를 바꾸면 같이 고친다. */
+const PLAN_TRIP = CONFIG.tripId;
+const TRIP_START = '2026-11-14';
+const TRIP_END = '2026-11-17';
+const FLIGHT_DOCS = {
+  out: { flightNo: 'LJ171', depIata: 'ICN', arrIata: 'TPE', depLocal: TRIP_START + 'T09:35', arrLocal: TRIP_START + 'T11:30', memo: '진에어 (마이리얼트립 예약)' },
+  in:  { flightNo: 'LJ172', depIata: 'TPE', arrIata: 'ICN', depLocal: TRIP_END + 'T12:40', arrLocal: TRIP_END + 'T16:00', memo: '진에어 (마이리얼트립 예약)' }
+};
+const planFlights = { out: null, in: null };  // 현재 확정된 항공편 문서
+let planLodgings = {};                        // id -> 확정된 숙소 문서
+const hotelCards = {};                        // 숙소 id -> { name, btn }
+let flightBtn = null;
+let planToastTimer = null;
+
+function planToast(msg) {
+  let t = document.getElementById('plan-toast');
+  if (!t) { t = document.createElement('div'); t.id = 'plan-toast'; t.className = 'plan-toast'; document.body.appendChild(t); }
+  t.textContent = msg;
+  t.style.display = 'block';
+  clearTimeout(planToastTimer);
+  planToastTimer = setTimeout(() => { t.style.display = 'none'; }, 3500);
+}
+
+function isFlightConfirmed() {
+  return !!(planFlights.out && planFlights.in &&
+    planFlights.out.flightNo === FLIGHT_DOCS.out.flightNo && planFlights.in.flightNo === FLIGHT_DOCS.in.flightNo);
+}
+
+function refreshConfirmButtons() {
+  if (flightBtn) {
+    const on = isFlightConfirmed();
+    flightBtn.classList.toggle('on', on);
+    flightBtn.textContent = on ? '일정에 확정됨 (탭하면 취소)' : '이 항공편 일정에 확정';
+  }
+  Object.keys(hotelCards).forEach(id => {
+    const on = !!planLodgings[id];
+    hotelCards[id].btn.classList.toggle('on', on);
+    hotelCards[id].btn.textContent = on ? '숙소로 확정됨 (탭하면 취소)' : '이 숙소 일정에 확정';
+  });
+}
+
+async function confirmFlights() {
+  try {
+    if (isFlightConfirmed()) {
+      if (!confirm('여행플래너 일정에서 항공편을 뺄까요?\n(확정해 둔 도착/출국 공항 정보도 함께 지워져요)')) return;
+      await deleteDoc(doc(db, 'trips', PLAN_TRIP, 'flights', 'out'));
+      await deleteDoc(doc(db, 'trips', PLAN_TRIP, 'flights', 'in'));
+      planToast('항공편 확정을 취소했어요');
+      return;
+    }
+    if (!confirm('진에어 LJ171(출국) / LJ172(귀국)을 여행플래너 일정에 확정할까요?\n(여행플래너에 이미 입력한 항공편은 이 내용으로 바뀌어요)')) return;
+    for (const id of ['out', 'in']) {
+      const ref = doc(db, 'trips', PLAN_TRIP, 'flights', id);
+      const prev = (await getDoc(ref)).data();
+      const patch = Object.assign({}, FLIGHT_DOCS[id]);
+      const dest = id === 'out' ? patch.arrIata : patch.depIata;
+      // 목적지 공항이 바뀌었다면 이전에 확정한 공항 place ID 는 더 이상 유효하지 않다.
+      if (prev && prev.destAirport && prev.destAirport.iata !== dest) patch.destAirport = null;
+      await setDoc(ref, patch, { merge: true });
+    }
+    planToast('일정에 확정했어요. 여행플래너 > 설정에서 도착/출국 공항을 확정하면 이동시간이 계산돼요');
+  } catch (e) {
+    console.error(e);
+    alert('저장에 실패했어요. 잠시 후 다시 시도해 주세요.');
+  }
+}
+
+async function confirmHotel(id) {
+  const name = hotelCards[id].name;
+  try {
+    if (planLodgings[id]) {
+      if (!confirm('"' + name + '" 숙소 확정을 취소할까요?')) return;
+      await deleteDoc(doc(db, 'trips', PLAN_TRIP, 'lodgings', id));
+      planToast('숙소 확정을 취소했어요');
+      return;
+    }
+    if (!confirm('"' + name + '"을(를) 숙소로 확정할까요?\n(' + TRIP_START + ' ~ ' + TRIP_END + ', 3박)')) return;
+    // 이 페이지의 다른 후보가 확정돼 있으면 해제한다(같은 밤에 숙소가 겹치지 않게). 여행플래너에서 직접 넣은 숙소는 건드리지 않는다.
+    for (const other of Object.keys(hotelCards)) {
+      if (other !== id && planLodgings[other]) await deleteDoc(doc(db, 'trips', PLAN_TRIP, 'lodgings', other));
+    }
+    await setDoc(doc(db, 'trips', PLAN_TRIP, 'lodgings', id), {
+      name, rawTitle: '', placeId: null, fid: null, cid: null, mapUrl: '',
+      checkIn: TRIP_START, checkOut: TRIP_END, memo: '', createdAt: Date.now()
+    });
+    planToast('숙소를 일정에 확정했어요. 여행플래너 > 설정 > 숙소 수정에서 구글맵 링크를 넣으면 이동시간이 계산돼요');
+  } catch (e) {
+    console.error(e);
+    alert('저장에 실패했어요. 잠시 후 다시 시도해 주세요.');
+  }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  const mkBtn = (label, onClick) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'btn-confirm';
+    b.textContent = label;
+    b.addEventListener('click', e => { e.stopPropagation(); onClick(); });
+    return b;
+  };
+  const hint = () => {
+    const d = document.createElement('div');
+    d.className = 'confirm-hint';
+    d.textContent = '확정하면 여행플래너 일정에 자동으로 들어가요';
+    return d;
+  };
+
+  const flightInner = document.querySelector('.flight-card.winner .flight-inner');
+  if (flightInner) {
+    flightBtn = mkBtn('이 항공편 일정에 확정', confirmFlights);
+    flightInner.appendChild(flightBtn);
+    flightInner.appendChild(hint());
+  }
+
+  document.querySelectorAll('.hotel-card').forEach(card => {
+    const m = (card.getAttribute('onclick') || '').match(/openModal\('(\w+)'\)/);
+    const nameEl = card.querySelector('.hotel-name');
+    const body = card.querySelector('.hotel-body');
+    if (!m || !nameEl || !body) return;
+    const id = m[1];
+    const btn = mkBtn('이 숙소 일정에 확정', () => confirmHotel(id));
+    hotelCards[id] = { name: nameEl.textContent.trim(), btn };
+    body.appendChild(btn);
+    body.appendChild(hint());
+  });
+
+  ['out', 'in'].forEach(id => {
+    onSnapshot(doc(db, 'trips', PLAN_TRIP, 'flights', id), snap => {
+      planFlights[id] = snap.exists() ? snap.data() : null;
+      refreshConfirmButtons();
+    });
+  });
+  onSnapshot(collection(db, 'trips', PLAN_TRIP, 'lodgings'), snap => {
+    planLodgings = {};
+    snap.docs.forEach(d => { planLodgings[d.id] = d.data(); });
+    refreshConfirmButtons();
+  });
+});
 </script>
 
 <script>

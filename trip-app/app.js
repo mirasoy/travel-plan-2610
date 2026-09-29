@@ -1159,6 +1159,32 @@ function openLodgingSheet(existing) {
         renderSettings(); renderPlan();
       };
       nameIn.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); save(); } });
+
+      // 메인 페이지에서 확정한 숙소처럼 장소 ID 가 없는 숙소는, 구글맵 링크로 장소 ID 를 채워야 이동시간이 계산된다.
+      // 이름은 그대로 두고 링크 해석 결과의 식별자만 반영한다.
+      let placeIdBox = null;
+      if (existing) {
+        const linkIn = h('input', { class: 'input', type: 'text', placeholder: '구글맵 링크 붙여넣기 (장소 ID 채우기)' });
+        const linkBtn = h('button', { type: 'button', class: 'btn small' }, '장소 ID 채우기');
+        linkBtn.addEventListener('click', async () => {
+          const url = extractMapUrl(linkIn.value);
+          if (!url) { toast('구글맵 링크가 아니에요'); return; }
+          linkBtn.disabled = true; linkBtn.textContent = '확인 중';
+          const d = buildDraft(url, await callResolver(url));
+          linkBtn.disabled = false; linkBtn.textContent = '장소 ID 채우기';
+          if (!d.placeId) { toast('장소 ID를 얻지 못했어요. 다른 링크를 붙여넣어 보세요'); return; }
+          const patch = { placeId: d.placeId, fid: d.fid, cid: d.cid, mapUrl: d.mapUrl, rawTitle: d.rawTitle };
+          Object.assign(existing, patch);
+          updateDoc(doc(lodgingsCol, existing.id), patch).catch(fail('장소 ID 저장'));
+          toast('장소 ID를 채웠어요');
+          close();
+          renderSettings(); renderPlan();
+        });
+        placeIdBox = h('div', null,
+          h('div', { class: 'label' }, existing.placeId ? '장소 ID: 있음 (다른 링크로 바꿀 수 있어요)' : '장소 ID: 없음 (이동시간 계산 불가)'),
+          linkIn, h('div', { style: 'height:8px' }), linkBtn);
+      }
+
       root.append(
         h('h3', null, existing ? '숙소 수정' : '숙소 추가'),
         draft.notice ? h('div', { class: 'notice' }, draft.notice) : null,
@@ -1168,6 +1194,7 @@ function openLodgingSheet(existing) {
           h('div', null, h('div', { class: 'label' }, '체크인'), inIn),
           h('div', null, h('div', { class: 'label' }, '체크아웃'), outIn)),
         memoIn,
+        placeIdBox,
         h('div', { class: 'row' },
           h('button', { type: 'button', class: 'btn ghost', onclick: existing ? close : () => { draft = null; draw(); } }, existing ? '취소' : '뒤로'),
           h('button', { type: 'button', class: 'btn primary grow', onclick: save }, '저장')));
@@ -1187,7 +1214,7 @@ function renderLodgings(m) {
     box.append(h('div', { class: 'lod' },
       h('div', { class: 'l-name' }, l.name || '(이름 없음)'),
       h('div', { class: 'l-sub' }, (l.checkIn || '?') + ' ~ ' + (l.checkOut || '?') + (n != null ? ' · ' + n + '박' : '')),
-      l.placeId ? null : h('div', { class: 'l-sub' }, '장소 ID 없음: 이동시간 계산 불가'),
+      l.placeId ? null : h('div', { class: 'l-sub' }, '장소 ID 없음: 이동시간 계산 불가 (수정에서 구글맵 링크로 채울 수 있어요)'),
       h('div', { class: 'row' },
         h('button', { type: 'button', class: 'btn small', onclick: () => openLodgingSheet(l) }, '수정'),
         h('button', { type: 'button', class: 'btn small danger', onclick: () => deleteLodging(l) }, '삭제'))));
