@@ -18,13 +18,29 @@
 <main>
   <section id="tab-pool" class="tab">
     <div class="panel">
-      <label class="label" for="paste">구글맵 공유 텍스트</label>
-      <textarea id="paste" class="input" rows="4" placeholder="구글맵에서 공유한 텍스트를 붙여넣기"></textarea>
-      <div class="label">카테고리 (선택)</div>
-      <div id="cat-chips" class="chips"></div>
-      <div class="row">
-        <button id="clear-btn" class="btn ghost" type="button">지우기</button>
-        <button id="save-btn" class="btn primary grow" type="button">저장</button>
+      <div id="step-input">
+        <label class="label" for="paste">구글맵 링크 또는 공유 텍스트</label>
+        <textarea id="paste" class="input" rows="4" placeholder="구글맵에서 공유한 텍스트를 붙여넣기"></textarea>
+        <div class="row">
+          <button id="clear-btn" class="btn ghost" type="button">지우기</button>
+          <button id="check-btn" class="btn primary grow" type="button">장소 확인</button>
+        </div>
+      </div>
+
+      <div id="step-preview" hidden>
+        <div id="draft-notice" class="notice" hidden></div>
+        <label class="label" for="draft-name">이름 (탭해서 고칠 수 있음)</label>
+        <input id="draft-name" class="input" type="text" placeholder="장소 이름">
+        <div id="draft-address-box" class="address-box" hidden>
+          <span id="draft-address" class="address"></span>
+          <span class="attrib">Google Maps</span>
+        </div>
+        <div class="label">카테고리 (선택)</div>
+        <div id="cat-chips" class="chips"></div>
+        <div class="row">
+          <button id="back-btn" class="btn ghost" type="button">뒤로</button>
+          <button id="save-btn" class="btn primary grow" type="button">저장</button>
+        </div>
       </div>
     </div>
 

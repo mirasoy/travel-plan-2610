@@ -2,7 +2,7 @@ import { CONFIG } from './config.js';
 import {
   db, doc, collection, setDoc, updateDoc, deleteDoc, onSnapshot, writeBatch
 } from './firebase.js';
-import { parseShare, joinShareParams, urlKey, placeNameFromUrl } from './parse.js';
+import { extractMapUrl, cleanMapUrl, joinShareParams, urlKey, mapOpenUrl } from './parse.js';
 
 const CATS = [
   ['sight', '관광'], ['food', '식당'], ['massage', '마사지'], ['cafe', '카페'], ['etc', '기타']
@@ -139,6 +139,17 @@ function readShare() {
 
 /* ---------- 장소 풀 ---------- */
 
+const RESOLVER_TIMEOUT_MS = 15000; // Worker 내부 대기가 길 수 있어 클라이언트는 15초
+const resolving = new Set();
+state.draft = null; // 저장 전 미리보기 상태
+state.fill = {};    // 이름 채우기 중인 기존 항목의 미리보기 (poolId -> draft)
+
+const MSG_RAW = '이름을 자동으로 못 나눴어요. 원문 그대로 넣었으니 고쳐주세요';
+const MSG_LINK_ONLY = '자동 조회에 실패했어요. 링크만 저장하고 이름은 직접 입력하세요';
+const MSG_OFF = '자동 조회가 꺼져 있어요. 링크만 저장하고 이름은 직접 입력하세요';
+const MSG_NOT_PLACE = '장소 링크가 아니에요(검색 결과 링크일 수 있어요). 이름을 직접 입력해서 저장할 수 있어요';
+const MSG_NO_LINK = '구글맵 링크가 아니에요. 이름을 직접 입력해서 저장할 수 있어요';
+
 function renderChips() {
   const box = $('#cat-chips');
   box.textContent = '';
@@ -153,100 +164,187 @@ function renderChips() {
   });
 }
 
-async function savePool() {
+// Worker 호출 1회(사용자 탭 1번 = 호출 1번, 자동 재시도 없음). 결과를 화면 흐름용 kind 로 정규화한다.
+// kind: off | failed | not_place | places404 | places | raw
+async function callResolver(url) {
+  if (!CONFIG.resolverUrl) return { kind: 'off' };
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), RESOLVER_TIMEOUT_MS);
+  try {
+    const res = await fetch(CONFIG.resolverUrl + '/?url=' + encodeURIComponent(url), { signal: ctl.signal });
+    let j = null;
+    try { j = await res.json(); } catch (e) { return { kind: 'failed', reason: 'not_json' }; }
+    if (res.status === 403) {
+      console.error('[resolver] 403 origin_not_allowed: resolver의 ALLOWED_ORIGINS를 확인하세요', j);
+      return { kind: 'failed', reason: 'origin_not_allowed' };
+    }
+    if (!res.ok || !j || typeof j !== 'object') {
+      console.error('[resolver] http ' + res.status, j && j.error, j && j.detail);
+      return { kind: 'failed', reason: (j && j.error) || 'http_' + res.status };
+    }
+    if (j.success === false) {
+      if (j.error === 'not_a_place_url') return { kind: 'not_place' };
+      console.error('[resolver] success:false', j.error, j.detail);
+      return { kind: 'failed', reason: j.error || 'unknown' };
+    }
+    const ps = j.places_status;
+    if (ps === 'http_404') {
+      // place ID 대응 실패: 링크만 저장 흐름
+      console.error('[resolver] places http_404 (place ID 대응 안 됨)', { placeId: j.placeId, fid: j.fid });
+      return { kind: 'places404', resp: j };
+    }
+    if (ps === 'http_403' || ps === 'http_429') {
+      console.error('[resolver] places_status ' + ps + ' (API 키 제한 또는 한도 문제)');
+    } else if (ps && ps !== 'ok' && ps !== 'skipped' && ps !== 'no_key') {
+      console.warn('[resolver] places_status', ps);
+    }
+    return { kind: j.source === 'places' ? 'places' : 'raw', resp: j };
+  } catch (e) {
+    return { kind: 'failed', reason: e && e.name === 'AbortError' ? 'timeout' : 'network' };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// 응답을 미리보기(draft)로 바꾼다. name 은 화면에서 사용자가 확인/수정한 뒤에만 저장된다.
+// address 는 미리보기 전용이며 저장하지 않는다(구글 약관의 캐싱 제한).
+function buildDraft(inputUrl, r) {
+  const d = {
+    mapUrl: inputUrl ? cleanMapUrl(inputUrl) : '',
+    name: '', address: '', rawTitle: '', placeId: null, fid: null, cid: null,
+    notice: '', focus: true
+  };
+  const resp = r.resp;
+  if (resp) {
+    d.rawTitle = resp.rawTitle || '';
+    d.placeId = resp.placeId || null;
+    d.fid = resp.fid || null;
+    d.cid = resp.cid == null || resp.cid === '' ? null : String(resp.cid);
+    d.address = resp.address || '';
+  }
+  switch (r.kind) {
+    case 'places':
+      d.name = (resp.name || '').trim();
+      d.focus = !d.name;
+      if (!d.name) d.notice = MSG_LINK_ONLY;
+      break;
+    case 'raw':
+      d.name = (resp.name || resp.rawTitle || '').trim();
+      d.notice = d.name ? MSG_RAW : MSG_LINK_ONLY;
+      break;
+    case 'places404':
+      d.notice = MSG_LINK_ONLY; // 이름은 비워 둔다
+      break;
+    case 'not_place': d.notice = MSG_NOT_PLACE; break;
+    case 'off': d.notice = MSG_OFF; break;
+    default: d.notice = MSG_LINK_ONLY;
+  }
+  return d;
+}
+
+function showDraft(d) {
+  state.draft = d;
+  $('#step-input').hidden = true;
+  $('#step-preview').hidden = false;
+  const n = $('#draft-notice');
+  n.textContent = d.notice;
+  n.hidden = !d.notice;
+  const input = $('#draft-name');
+  input.value = d.name;
+  $('#draft-address').textContent = d.address;
+  $('#draft-address-box').hidden = !d.address;
+  renderChips();
+  if (d.focus) { input.focus(); input.select(); }
+}
+
+function backToInput() {
+  state.draft = null;
+  $('#step-preview').hidden = true;
+  $('#step-input').hidden = false;
+}
+
+async function checkPlace() {
   const text = $('#paste').value;
-  const { mapUrl, rawTitle, name } = parseShare(text);
-  if (!mapUrl && !name) { toast('붙여넣은 내용이 없음'); return; }
+  if (!text.trim()) { toast('붙여넣은 내용이 없어요'); return; }
+  // URL 하나만 Worker 에 보낸다. 나머지 텍스트는 이름 후보로도 쓰지 않는다.
+  const inputUrl = extractMapUrl(text);
+  if (!inputUrl) {
+    showDraft({ mapUrl: '', name: '', address: '', rawTitle: '', placeId: null, fid: null, cid: null, notice: MSG_NO_LINK, focus: true });
+    return;
+  }
+  const btn = $('#check-btn');
+  btn.disabled = true;
+  btn.textContent = '확인 중...';
+  const r = await callResolver(inputUrl);
+  btn.disabled = false;
+  btn.textContent = '장소 확인';
+  showDraft(buildDraft(inputUrl, r));
+}
 
+// 중복 판정: fid 가 같으면 같은 장소(링크 형식이 달라도). 그 외에는 정규화한 mapUrl 이 같으면 같은 장소.
+// (fid 가 없는 기존 항목과도 mapUrl 로는 비교되도록 두 조건을 OR 로 둔다.)
+function findDuplicate(d) {
+  return state.pool.find(p =>
+    (d.fid && p.fid && p.fid === d.fid) ||
+    (d.mapUrl && p.mapUrl && urlKey(p.mapUrl) === urlKey(d.mapUrl)));
+}
+
+async function saveDraft() {
+  const d = state.draft;
+  if (!d) return;
+  const name = singleLine($('#draft-name').value); // 사용자가 화면에서 확인한 값
+  if (!name && !d.mapUrl) { toast('이름을 입력하세요'); $('#draft-name').focus(); return; }
   const cat = state.saveCat;
-  const dup = mapUrl ? state.pool.find(p => p.mapUrl && urlKey(p.mapUrl) === urlKey(mapUrl)) : null;
 
+  // 중복 판정은 응답을 받은 뒤(여기)에서 한다.
+  const dup = findDuplicate(d);
   if (dup) {
-    const c = await choose('이미 저장된 링크',
-      '"' + (dup.name || dup.rawTitle || '이름 없음') + '" 과(와) 같은 지도 링크임. 덮어쓸까?',
+    const c = await choose('이미 저장된 장소',
+      '"' + (dup.name || '이름 없음') + '" 과(와) 같은 장소임. 덮어쓸까?',
       [{ label: '취소', value: 'cancel' }, { label: '덮어쓰기', value: 'overwrite', kind: 'primary' }]);
     if (c !== 'overwrite') return;
-    // 덮어쓰기: 링크/원문/이름을 새 값으로 교체. 새 이름이 비었거나 카테고리 미선택이면 기존 값 유지. 메모는 유지.
-    const patch = { rawTitle, mapUrl };
+    // 덮어쓰기: 새로 얻은 값만 교체. 비어 있는 새 값(이름, 식별자, 카테고리)이 기존 값을 지우지는 않는다. 메모는 유지.
+    const patch = {};
     if (name) patch.name = name;
+    if (d.mapUrl) patch.mapUrl = d.mapUrl;
+    if (d.rawTitle) patch.rawTitle = d.rawTitle;
+    if (d.placeId) patch.placeId = d.placeId;
+    if (d.fid) patch.fid = d.fid;
+    if (d.cid) patch.cid = d.cid;
     if (cat) patch.category = cat;
     Object.assign(dup, patch);
     updateDoc(doc(poolCol, dup.id), patch).catch(fail('덮어쓰기'));
     finishSave();
-    if (!dup.name) { startPoolEdit(dup.id); autoFillName(dup.id); }
     toast('덮어썼음');
     return;
   }
 
   const ref = doc(poolCol);
   const data = {
-    rawTitle,
-    name,            // 초기값은 rawTitle 과 같은 텍스트(줄바꿈만 공백으로). 이후 사용자가 수정.
-    category: cat,   // null 허용
+    name,
+    rawTitle: d.rawTitle || '',
+    placeId: d.placeId,
+    fid: d.fid,
+    cid: d.cid,
+    mapUrl: d.mapUrl,        // 입력 URL 에서 추적 파라미터만 제거한 값. 링크가 없으면 빈 문자열
+    category: cat,           // null 허용
     memo: '',
-    mapUrl,          // URL 이 없으면 빈 문자열
     confirmedAt: null,
-    createdAt: Date.now() // 서버 시각 대신 클라이언트 시각(정렬 용도). 기기 시계 오차는 허용.
+    createdAt: Date.now()    // 서버 시각 대신 클라이언트 시각(정렬 용도). 기기 시계 오차는 허용.
   };
   // 스냅샷은 state.pool 을 통째로 교체하므로, 낙관적 반영은 쓰기 호출보다 먼저 해야 중복이 안 생긴다.
   state.pool.push({ id: ref.id, ...data });
   // 오프라인이면 promise 가 서버 확인까지 대기하므로 await 하지 않는다.
   setDoc(ref, data).catch(fail('저장'));
   finishSave();
-
-  if (!name) {
-    // URL 만 있고 이름이 없음: 링크는 저장했고, 이름 입력칸에 바로 포커스
-    startPoolEdit(ref.id);
-    toast(CONFIG.resolverUrl ? '링크 저장됨. 이름을 조회하는 중' : '링크 저장됨. 이름을 입력하세요');
-    autoFillName(ref.id);
-  } else {
-    renderPool();
-    toast('저장했음');
-  }
-}
-
-// 이름 자동 조회. 풀 URL 이면 URL 에서 바로 읽고, 단축 링크면 resolverUrl 워커가 돌려준 full_url 에서 읽는다.
-// 실패해도 저장된 링크와 직접 입력 흐름에는 영향이 없다.
-async function fetchPlaceName(mapUrl) {
-  const local = placeNameFromUrl(mapUrl);
-  if (local) return local;
-  if (!CONFIG.resolverUrl) return '';
-  const ctl = new AbortController();
-  const timer = setTimeout(() => ctl.abort(), 8000);
-  try {
-    const res = await fetch(CONFIG.resolverUrl + '?url=' + encodeURIComponent(mapUrl), { signal: ctl.signal });
-    const j = await res.json();
-    return j && j.success && j.full_url ? placeNameFromUrl(j.full_url) : '';
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
-const resolving = new Set();
-async function autoFillName(id) {
-  const p = state.pool.find(x => x.id === id);
-  if (!p || p.name || !p.mapUrl || resolving.has(id)) return;
-  resolving.add(id);
-  let name = '';
-  try { name = await fetchPlaceName(p.mapUrl); } catch (e) { console.error('resolver', e); }
-  resolving.delete(id);
-
-  const cur = state.pool.find(x => x.id === id);
-  if (!cur || cur.name) return; // 그 사이 삭제됐거나 이름이 채워짐
-  if (!name) { toast('이름 자동 조회 실패. 직접 입력하세요'); return; }
-  const input = state.editingPoolId === id ? $('#pool-list [data-id="' + id + '"] .name-input') : null;
-  if (input && input.value.trim()) return; // 사용자가 입력 중이면 덮어쓰지 않는다
-  cur.name = name;
-  updateDoc(doc(poolCol, id), { name }).catch(fail('이름 저장'));
-  if (state.editingPoolId === id) state.editingPoolId = null;
   renderPool();
-  renderPlan();
-  toast('이름 자동 입력: ' + name);
+  toast(name ? '저장했음' : '링크만 저장했음. 이름 채우기로 나중에 채울 수 있어요');
 }
 
 function finishSave() {
   $('#paste').value = '';
   state.saveCat = null;
+  backToInput();
   renderChips();
 }
 
@@ -258,11 +356,39 @@ function startPoolEdit(id) {
 
 function finishPoolEdit(p, name, memo) {
   const patch = { name: singleLine(name), memo: memo.trim() };
+  const fill = state.fill[p.id];
+  if (fill) {
+    if (fill.rawTitle) patch.rawTitle = fill.rawTitle;
+    if (fill.placeId) patch.placeId = fill.placeId;
+    if (fill.fid) patch.fid = fill.fid;
+    if (fill.cid) patch.cid = fill.cid;
+  }
+  delete state.fill[p.id];
   Object.assign(p, patch);
   updateDoc(doc(poolCol, p.id), patch).catch(fail('수정'));
   state.editingPoolId = null;
   renderPool();
   renderPlan();
+}
+
+// 이름이 빈 기존 항목(링크만 저장했거나 오프라인에서 저장한 것)을 mapUrl 로 다시 조회해 채운다.
+// 조회 결과는 편집 화면에 미리 채워질 뿐이고, 사용자가 저장을 눌러야 반영된다.
+async function fillName(p) {
+  if (resolving.has(p.id)) return;
+  resolving.add(p.id);
+  toast('이름을 조회하는 중');
+  const r = await callResolver(p.mapUrl);
+  resolving.delete(p.id);
+  const cur = state.pool.find(x => x.id === p.id);
+  if (!cur) return;
+  if (r.kind === 'failed' || r.kind === 'off') {
+    toast('이름 조회에 실패했어요. 온라인에서 다시 눌러 보세요');
+    return;
+  }
+  const d = buildDraft(cur.mapUrl, r);
+  if (r.kind === 'not_place') toast('장소 링크가 아니에요(검색 결과 링크일 수 있어요)');
+  state.fill[cur.id] = d;
+  startPoolEdit(cur.id);
 }
 
 function cycleCategory(p) {
@@ -306,15 +432,21 @@ function poolCard(p) {
   ));
 
   if (state.editingPoolId === p.id) {
-    const nameIn = h('input', { class: 'input name-input', type: 'text', value: p.name || '', placeholder: '장소 이름' });
+    const fill = state.fill[p.id];
+    const nameIn = h('input', { class: 'input name-input', type: 'text', value: p.name || (fill && fill.name) || '', placeholder: '장소 이름' });
     const memoIn = h('input', { class: 'input', type: 'text', value: p.memo || '', placeholder: '메모 (선택)' });
     const save = () => finishPoolEdit(p, nameIn.value, memoIn.value);
     nameIn.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); save(); } });
+    const raw = p.rawTitle || (fill && fill.rawTitle);
     card.append(
-      h('div', { class: 'raw' }, '원문: ' + (p.rawTitle || '(없음)')),
-      nameIn, memoIn,
+      fill && fill.notice ? h('div', { class: 'notice' }, fill.notice) : null,
+      raw ? h('div', { class: 'raw' }, '원문: ' + raw) : null,
+      nameIn,
+      fill && fill.address ? h('div', { class: 'address-box' },
+        h('span', { class: 'address' }, fill.address), h('span', { class: 'attrib' }, 'Google Maps')) : null,
+      memoIn,
       h('div', { class: 'row' },
-        h('button', { type: 'button', class: 'btn', onclick: () => { state.editingPoolId = null; renderPool(); } }, '취소'),
+        h('button', { type: 'button', class: 'btn', onclick: () => { delete state.fill[p.id]; state.editingPoolId = null; renderPool(); } }, '취소'),
         h('button', { type: 'button', class: 'btn primary', onclick: save }, '저장'))
     );
   } else {
@@ -324,12 +456,13 @@ function poolCard(p) {
       onclick: () => startPoolEdit(p.id)
     }, p.name || '이름 없음. 탭해서 입력'));
     if (p.memo) card.append(h('div', { class: 'memo' }, p.memo));
+    const open = mapOpenUrl(p, CONFIG.destinationCity);
     card.append(h('div', { class: 'row' },
-      p.mapUrl ? h('a', { class: 'btn', href: p.mapUrl, target: '_blank', rel: 'noopener' }, '지도 열기') : null,
+      open ? h('a', { class: 'btn', href: open, target: '_blank', rel: 'noopener' }, '지도 열기') : null,
       h('button', { type: 'button', class: 'btn danger', onclick: () => deletePool(p) }, '삭제')));
     if (!p.name && p.mapUrl && CONFIG.resolverUrl) {
       card.append(h('div', { class: 'row' },
-        h('button', { type: 'button', class: 'btn', onclick: () => autoFillName(p.id) }, '이름 자동 입력')));
+        h('button', { type: 'button', class: 'btn', onclick: () => fillName(p) }, '이름 채우기')));
     }
   }
   return card;
@@ -636,7 +769,10 @@ function init() {
   renderChips();
   readShare();
 
-  $('#save-btn').addEventListener('click', savePool);
+  $('#check-btn').addEventListener('click', checkPlace);
+  $('#save-btn').addEventListener('click', saveDraft);
+  $('#back-btn').addEventListener('click', backToInput);
+  $('#draft-name').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); saveDraft(); } });
   $('#clear-btn').addEventListener('click', () => { $('#paste').value = ''; });
   $('#add-item-btn').addEventListener('click', openAddSheet);
   $('#dates-btn').addEventListener('click', openDatesSheet);
