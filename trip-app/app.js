@@ -31,7 +31,8 @@ const state = {
   saveCat: null,
   editingPoolId: null,
   editingItemId: null,
-  focusEdit: false
+  focusEdit: false,
+  dragging: false
 };
 
 /* ---------- 유틸 ---------- */
@@ -562,6 +563,7 @@ function itemTitle(it) {
 }
 
 function renderPlan() {
+  if (state.dragging) return; // 드래그 중에는 갱신하지 않는다(드롭 때 다시 그림)
   const m = model();
   const total = Math.max(m.dayCount, m.maxItemDay, state.manualDays, 1);
   if (state.day > total) state.day = total;
@@ -790,34 +792,136 @@ function itemCard(it, idx, n) {
     return card;
   }
 
-  card.append(h('div', { class: 'item-head' },
-    h('span', { class: 'item-time' }, it.time || '--:--'),
-    h('span', { class: 'item-title' }, itemTitle(it))));
-  if (it.memo) card.append(h('div', { class: 'memo' }, it.memo));
-  card.append(h('div', { class: 'row' },
-    h('button', { type: 'button', class: 'btn', disabled: idx === 0, 'aria-label': '위로', onclick: () => moveItem(it, -1) }, '위'),
-    h('button', { type: 'button', class: 'btn', disabled: idx === n - 1, 'aria-label': '아래로', onclick: () => moveItem(it, 1) }, '아래'),
-    h('button', { type: 'button', class: 'btn', onclick: () => { state.editingItemId = it.id; state.focusEdit = true; renderPlan(); } }, '수정')));
-  card.append(h('div', { class: 'row' },
+  card.classList.add('item');
+  const handle = h('button', {
+    type: 'button', class: 'handle', 'aria-label': '순서 이동 (드래그, 또는 위/아래 방향키)',
+    onpointerdown: e => startDrag(e, it, card),
+    onkeydown: e => {
+      if (e.key === 'ArrowUp') { e.preventDefault(); moveItem(it, -1); focusHandle(it.id); }
+      else if (e.key === 'ArrowDown') { e.preventDefault(); moveItem(it, 1); focusHandle(it.id); }
+    }
+  });
+  handle.innerHTML = '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><circle cx="5" cy="3" r="1.4"/><circle cx="11" cy="3" r="1.4"/><circle cx="5" cy="8" r="1.4"/><circle cx="11" cy="8" r="1.4"/><circle cx="5" cy="13" r="1.4"/><circle cx="11" cy="13" r="1.4"/></svg>';
+  const main = h('div', { class: 'item-main' },
+    h('div', { class: 'item-head' },
+      h('span', { class: 'item-time' }, it.time || '--:--'),
+      h('span', { class: 'item-title' }, itemTitle(it))));
+  if (it.memo) main.append(h('div', { class: 'memo' }, it.memo));
+  main.append(h('div', { class: 'item-actions' },
+    h('button', { type: 'button', class: 'btn', onclick: () => { state.editingItemId = it.id; state.focusEdit = true; renderPlan(); } }, '수정'),
     p && mapOpenUrl(p, CONFIG.destinationCity)
-      ? h('a', { class: 'btn', href: mapOpenUrl(p, CONFIG.destinationCity), target: '_blank', rel: 'noopener' }, '지도 열기') : null,
-    h('button', { type: 'button', class: 'btn danger', onclick: () => removeItem(it) }, '배정 해제')));
+      ? h('a', { class: 'btn', href: mapOpenUrl(p, CONFIG.destinationCity), target: '_blank', rel: 'noopener' }, '지도') : null,
+    h('button', { type: 'button', class: 'btn danger', onclick: () => removeItem(it) }, '해제')));
+  card.append(handle, main);
   return card;
 }
 
-// 위/아래 이동: 해당 일차의 order 를 1..n 으로 다시 매긴다. 동시 추가로 order 가 겹쳐도 여기서 정리된다.
-function moveItem(it, dir) {
+// 순서 변경: 해당 일차의 order 를 1..n 으로 다시 매긴다. 동시 추가로 order 가 겹쳐도 여기서 정리된다.
+function reorderItem(it, toIdx) {
   const list = dayItems(it.day);
-  const i = list.findIndex(x => x.id === it.id);
-  const j = i + dir;
-  if (i < 0 || j < 0 || j >= list.length) return;
-  [list[i], list[j]] = [list[j], list[i]];
+  const from = list.findIndex(x => x.id === it.id);
+  if (from < 0 || toIdx < 0 || toIdx >= list.length || from === toIdx) return false;
+  list.splice(toIdx, 0, list.splice(from, 1)[0]);
   const batch = writeBatch(db);
   list.forEach((x, k) => {
     if (x.order !== k + 1) { x.order = k + 1; batch.update(doc(itemsCol, x.id), { order: k + 1 }); }
   });
   batch.commit().catch(fail('순서 변경'));
-  renderPlan();
+  return true;
+}
+
+function moveItem(it, dir) {
+  const i = dayItems(it.day).findIndex(x => x.id === it.id);
+  if (reorderItem(it, i + dir)) renderPlan();
+}
+
+function focusHandle(id) {
+  const b = document.querySelector('#day-items [data-id="' + id + '"] .handle');
+  if (b) b.focus();
+}
+
+// ---- 드래그 정렬 (Pointer Events: 터치, 마우스, 펜 공통). 핸들에서만 시작한다. ----
+// 가정: 앵커(공항, 숙소) 카드와 이동시간 배지는 고정이고, 사용자 카드끼리만 순서를 바꾼다.
+// 드래그 중 Firestore 스냅샷이 오면 화면 갱신을 미루고, 드롭 후 한 번 다시 그린다.
+function startDrag(e, it, card) {
+  if (e.button !== undefined && e.button !== 0) return;
+  const list = $('#day-items');
+  const cards = [...list.querySelectorAll('li.item')];
+  const from = cards.indexOf(card);
+  if (from < 0) return;
+  e.preventDefault();
+  const handle = e.currentTarget;
+  try { handle.setPointerCapture(e.pointerId); } catch (err) { /* 무시 */ }
+
+  const startY = e.clientY;
+  const startScroll = window.scrollY;
+  const rects = cards.map(c => c.getBoundingClientRect());
+  let to = from;
+  let lastY = startY;
+  let raf = 0;
+
+  state.dragging = true;
+  card.classList.add('dragging');
+  list.classList.add('is-dragging');
+  cards.forEach((c, i) => { if (i !== from) c.classList.add('shifting'); });
+
+  const apply = () => {
+    raf = 0;
+    const dy = lastY - startY + (window.scrollY - startScroll);
+    card.style.transform = 'translateY(' + dy + 'px) scale(1.02)';
+    // 드래그 중인 카드의 중심이 어느 카드 위에 있는지로 목표 위치를 정한다(문서 좌표 기준)
+    const center = rects[from].top + startScroll + rects[from].height / 2 + dy;
+    let t = from;
+    cards.forEach((c, i) => {
+      if (i === from) return;
+      const mid = rects[i].top + startScroll + rects[i].height / 2;
+      if (i < from && center < mid) t = Math.min(t, i);
+      if (i > from && center > mid) t = Math.max(t, i);
+    });
+    to = t;
+    // 새 순서로 다시 쌓았을 때 각 카드의 top 을 계산한다(카드 사이의 이동시간 배지 간격을 그대로 유지)
+    const order = cards.map((c, i) => i);
+    order.splice(from, 1);
+    order.splice(to, 0, from);
+    let cursor = rects[0].top;
+    order.forEach((ci, k) => {
+      if (ci !== from) {
+        const shift = cursor - rects[ci].top;
+        cards[ci].style.transform = shift ? 'translateY(' + shift + 'px)' : '';
+      }
+      cursor += rects[ci].height + (k < cards.length - 1 ? rects[k + 1].top - rects[k].bottom : 0);
+    });
+  };
+  const schedule = () => { if (!raf) raf = requestAnimationFrame(apply); };
+
+  // 화면 가장자리에서 자동 스크롤
+  let scrollTimer = setInterval(() => {
+    const edge = 70;
+    if (lastY < edge) window.scrollBy(0, -12);
+    else if (lastY > window.innerHeight - edge) window.scrollBy(0, 12);
+    else return;
+    schedule();
+  }, 16);
+
+  const move = ev => { lastY = ev.clientY; schedule(); };
+  const finish = commit => {
+    clearInterval(scrollTimer);
+    if (raf) cancelAnimationFrame(raf);
+    handle.removeEventListener('pointermove', move);
+    handle.removeEventListener('pointerup', up);
+    handle.removeEventListener('pointercancel', cancel);
+    try { handle.releasePointerCapture(e.pointerId); } catch (err) { /* 무시 */ }
+    state.dragging = false;
+    list.classList.remove('is-dragging');
+    if (commit) reorderItem(it, to);
+    renderPlan(); // 인라인 transform 을 모두 지우고 새 순서로 다시 그린다
+    if (commit) { legImmediate = false; scheduleLegs(); }
+  };
+  const up = () => finish(true);
+  const cancel = () => finish(false);
+  handle.addEventListener('pointermove', move);
+  handle.addEventListener('pointerup', up);
+  handle.addEventListener('pointercancel', cancel);
 }
 
 async function removeItem(it) {

@@ -1,0 +1,30 @@
+/* 루트 페이지 공통 모던 오버라이드. 각 페이지 인라인 스타일 뒤에 로드되어 덮어쓴다. */
+:root{--ink:#111418;--mut:#6b7280;--ln:#ececec;--soft:#f3f4f6;--acc:#111418;}
+body{background:#fafafa!important;color:var(--ink)!important;font-family:-apple-system,"Pretendard","Noto Sans KR","Malgun Gothic",sans-serif!important;letter-spacing:-0.01em;}
+header{background:transparent!important;color:var(--ink)!important;text-align:left!important;padding:36px 20px 8px!important;max-width:960px;margin:0 auto;}
+header h1{font-size:1.9rem!important;font-weight:800!important;letter-spacing:-0.03em!important;}
+header .sub{color:var(--mut)!important;opacity:1!important;font-size:.9rem!important;}
+.header-btns{justify-content:flex-start!important;}
+.btn-vote,.btn-archive{background:var(--soft)!important;color:var(--ink)!important;border:0!important;border-radius:999px!important;font-weight:600!important;padding:9px 18px!important;}
+.section-label{color:var(--mut)!important;letter-spacing:0!important;text-transform:none!important;font-size:.8rem!important;}
+.section-title{font-weight:800!important;letter-spacing:-0.02em!important;}
+.flight-card,.hotel-card,.card-link,.modal,.like-popup{border:1px solid var(--ln)!important;border-radius:18px!important;box-shadow:0 1px 2px rgba(16,24,40,.04),0 4px 12px rgba(16,24,40,.04)!important;}
+.flight-card.winner,.flight-card.runner{border-left:1px solid var(--ln)!important;}
+.hotel-card:hover{transform:translateY(-2px)!important;box-shadow:0 12px 28px rgba(16,24,40,.12)!important;}
+.hotel-color{display:none!important;}
+.hotel-thumb{border-radius:0!important;}
+.route-item,.hotel-feature,.room-info{background:var(--soft)!important;border-radius:12px!important;}
+.flight-rank{background:var(--ink)!important;}
+.flight-rank.r2{background:#9ca3af!important;}
+.route-time{color:var(--ink)!important;}
+.meta-chip,.meta-chip.green,.meta-chip.gray{background:var(--soft)!important;color:#374151!important;border-radius:999px!important;}
+.flight-note{background:#fffaeb!important;color:#b54708!important;border-radius:10px!important;}
+.hotel-score{background:var(--ink)!important;border-radius:8px!important;}
+.hotel-badge,.hotel-badge.parents,.hotel-badge.top-rating{background:rgba(17,20,24,.82)!important;border-radius:999px!important;}
+.platform-label,.platform-badge{background:var(--soft)!important;color:#374151!important;border-radius:999px!important;}
+.btn-book-flight,.btn-modal-book,.btn-modal-airbnb,.btn-modal-agoda,.btn-book,.btn-airbnb,.btn-agoda{background:var(--ink)!important;color:#fff!important;border-radius:12px!important;}
+.btn-book-flight:hover,.btn-modal-book:hover,.btn-modal-airbnb:hover,.btn-modal-agoda:hover{background:#374151!important;}
+.modal-header,.mh1,.mh2,.mh3,.mh4,.mh5,.mh6,.mh7,.mh8,.mh9,.mh10{background:var(--ink)!important;}
+.modal-overlay,.like-overlay{-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);background:rgba(17,20,24,.4)!important;}
+.heart-btn{border-radius:999px!important;border-color:var(--ln)!important;}
+.back{color:var(--ink)!important;}
