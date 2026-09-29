@@ -51,10 +51,16 @@ export function parseShare(input) {
 
 // 풀 URL 에서 장소 이름만 뽑는다. 이름/주소 분리 같은 가공은 하지 않고 URL 에 든 문자열을 그대로 디코딩한다.
 // 지원: /maps/place/<이름>/..., /maps/search/<이름>/..., ?q=<이름>. 좌표뿐이면 빈 문자열.
-export function placeNameFromUrl(full) {
+export function placeNameFromUrl(full, depth) {
   let u;
   try { u = new URL(full); } catch (e) { return ''; }
   if (!/(^|\.)google\.[a-z.]+$/i.test(u.hostname)) return '';
+  // 워커 IP 가 봇으로 걸리면 구글이 /sorry/index?continue=<원래 주소> 로 돌려보낸다.
+  // 진짜 지도 주소는 continue 안에 있으므로 벗겨서 다시 파싱한다(무한 중첩 방지로 2단계까지).
+  if (u.pathname.startsWith('/sorry')) {
+    const c = u.searchParams.get('continue');
+    return c && (depth || 0) < 2 ? placeNameFromUrl(c, (depth || 0) + 1) : '';
+  }
   const m = /\/maps\/(?:place|search)\/([^/@?]+)/.exec(u.pathname);
   let raw = m ? m[1] : (u.pathname.startsWith('/maps') ? (u.searchParams.get('q') || '') : '');
   raw = raw.replace(/\+/g, ' ');
