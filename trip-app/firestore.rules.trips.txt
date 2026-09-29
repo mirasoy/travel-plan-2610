@@ -1,0 +1,22 @@
+// Firebase 콘솔 > Firestore > 규칙 에서, 기존 규칙은 그대로 두고
+// "match /databases/{database}/documents { ... }" 블록 안 맨 아래에 아래 블록만 추가한다.
+// 기존 hotel_likes / votes 블록은 수정하지 않는다.
+
+    match /trips/{tripId} {
+      // 컬렉션 목록 조회(list)는 막고, 문서 ID 를 아는 경우의 단건 조회(get)만 허용.
+      allow get: if true;
+      allow list: if false;
+      allow create, update: if true;
+      allow delete: if false;
+
+      match /pool/{id}     { allow read, write: if true; }
+      match /items/{id}    { allow read, write: if true; }
+      match /expenses/{id} { allow read, write: if true; }
+      match /members/{id}  { allow read, write: if true; }
+    }
+
+// 한계(최종 보고서 참고):
+// 1) 인증이 없으므로 보안은 tripId 를 모른다는 것 하나에 기댄다. tripId 를 아는 사람은 읽기/쓰기 모두 가능.
+// 2) 기존 규칙에 "match /{document=**} { allow ... if true }" 같은 전체 허용 블록이 있으면
+//    규칙은 OR 로 합쳐지므로 위의 list 차단이 무력화된다. 콘솔에서 기존 규칙을 확인할 것.
+// 3) 하위 컬렉션 list 는 허용해야 실시간 구독이 되므로, tripId 를 알면 그 여행의 전체 목록을 볼 수 있다.
