@@ -6,11 +6,6 @@ import { extractMapUrl, cleanMapUrl, joinShareParams, urlKey, mapOpenUrl } from 
 import * as TC from './trip-calc.js';
 import { createLegsService, legKey } from './legs.js';
 
-const CATS = [
-  ['sight', '관광'], ['food', '식당'], ['massage', '마사지'], ['cafe', '카페'], ['etc', '기타']
-];
-const CAT_CYCLE = [null, 'sight', 'food', 'massage', 'cafe', 'etc'];
-const catLabel = c => (CATS.find(x => x[0] === c) || [])[1] || '';
 
 const tripRef = doc(db, 'trips', CONFIG.tripId);
 const poolCol = collection(tripRef, 'pool');
@@ -25,7 +20,9 @@ const state = {
   flights: { out: null, in: null },
   lodgings: [],
   itemsLoaded: false,
-  tab: 'pool',
+  tab: 'plan',
+  poolLoaded: false,
+  onPool: null,
   day: 1,
   manualDays: 1,
   saveCat: null,
@@ -58,12 +55,16 @@ function h(tag, attrs, ...kids) {
 }
 
 let toastTimer = null;
-function toast(msg) {
+// action: { label, onclick } 를 주면 토스트에 버튼이 붙고 5초 유지된다(실행취소 용).
+function toast(msg, action) {
   const t = $('#toast');
   t.textContent = msg;
+  if (action) {
+    t.append(h('button', { type: 'button', class: 'toast-act', onclick: () => { t.hidden = true; clearTimeout(toastTimer); action.onclick(); } }, action.label));
+  }
   t.hidden = false;
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => { t.hidden = true; }, 2500);
+  toastTimer = setTimeout(() => { t.hidden = true; }, action ? 5000 : 2500);
 }
 
 function fail(prefix) {
@@ -123,53 +124,25 @@ const byOrder = (a, b) => ((a.order || 0) - (b.order || 0)) || a.id.localeCompar
 
 /* ---------- 공유 수신 ---------- */
 
+// 공유로 열렸으면 일정 탭을 열고, 장소 추가 시트의 등록 화면에 공유 내용을 채워서 띄운다(저장은 사용자가 탭).
+// 새로고침 때 다시 뜨지 않도록 쿼리를 바로 지운다.
 function readShare() {
   const p = new URLSearchParams(location.search);
-  const has = ['title', 'text', 'url'].some(k => p.has(k));
-  let raw = null;
-  if (has) {
-    raw = {};
-    ['title', 'text', 'url'].forEach(k => { raw[k] = p.has(k) ? p.get(k) : null; });
-    try { sessionStorage.setItem('trip.share', JSON.stringify(raw)); } catch (e) { /* 무시 */ }
-    // 새로고침 시 다시 채워지지 않도록 쿼리를 제거한다.
-    history.replaceState(null, '', location.pathname);
-    // 세 값을 이어 붙여서 입력창에 미리 채운다(저장은 사용자가 탭).
-    $('#paste').value = joinShareParams(raw.title, raw.text, raw.url);
-  } else {
-    try { raw = JSON.parse(sessionStorage.getItem('trip.share') || 'null'); } catch (e) { raw = null; }
-  }
-  const show = v => (v === null ? '(파라미터 없음)' : v === '' ? '(빈 문자열)' : v);
-  $('#debug').textContent = raw
-    ? 'title:\n' + show(raw.title) + '\n\ntext:\n' + show(raw.text) + '\n\nurl:\n' + show(raw.url)
-    : '공유로 열린 기록 없음';
+  if (!['title', 'text', 'url'].some(k => p.has(k))) return;
+  const text = joinShareParams(p.get('title'), p.get('text'), p.get('url'));
+  history.replaceState(null, '', location.pathname);
+  state.sharedText = text;
 }
 
 /* ---------- 장소 풀 ---------- */
 
 const RESOLVER_TIMEOUT_MS = 15000; // Worker 내부 대기가 길 수 있어 클라이언트는 15초
-const resolving = new Set();
-state.draft = null; // 저장 전 미리보기 상태
-state.fill = {};    // 이름 채우기 중인 기존 항목의 미리보기 (poolId -> draft)
 
 const MSG_RAW = '이름을 자동으로 못 나눴어요. 원문 그대로 넣었으니 고쳐주세요';
 const MSG_LINK_ONLY = '자동 조회에 실패했어요. 링크만 저장하고 이름은 직접 입력하세요';
 const MSG_OFF = '자동 조회가 꺼져 있어요. 링크만 저장하고 이름은 직접 입력하세요';
 const MSG_NOT_PLACE = '장소 링크가 아니에요(검색 결과 링크일 수 있어요). 이름을 직접 입력해서 저장할 수 있어요';
 const MSG_NO_LINK = '구글맵 링크가 아니에요. 이름을 직접 입력해서 저장할 수 있어요';
-
-function renderChips() {
-  const box = $('#cat-chips');
-  box.textContent = '';
-  CATS.forEach(([v, label]) => {
-    box.append(h('button', {
-      type: 'button',
-      class: 'chip',
-      'aria-pressed': String(state.saveCat === v),
-      // 같은 칩을 다시 탭하면 선택 해제(미선택 허용)
-      onclick: () => { state.saveCat = state.saveCat === v ? null : v; renderChips(); }
-    }, label));
-  });
-}
 
 // Worker 호출 1회(사용자 탭 1번 = 호출 1번, 자동 재시도 없음). 결과를 화면 흐름용 kind 로 정규화한다.
 // kind: off | failed | not_place | places404 | places | raw
@@ -249,45 +222,6 @@ function buildDraft(inputUrl, r) {
   return d;
 }
 
-function showDraft(d) {
-  state.draft = d;
-  $('#step-input').hidden = true;
-  $('#step-preview').hidden = false;
-  const n = $('#draft-notice');
-  n.textContent = d.notice;
-  n.hidden = !d.notice;
-  const input = $('#draft-name');
-  input.value = d.name;
-  $('#draft-address').textContent = d.address;
-  $('#draft-address-box').hidden = !d.address;
-  renderChips();
-  if (d.focus) { input.focus(); input.select(); }
-}
-
-function backToInput() {
-  state.draft = null;
-  $('#step-preview').hidden = true;
-  $('#step-input').hidden = false;
-}
-
-async function checkPlace() {
-  const text = $('#paste').value;
-  if (!text.trim()) { toast('붙여넣은 내용이 없어요'); return; }
-  // URL 하나만 Worker 에 보낸다. 나머지 텍스트는 이름 후보로도 쓰지 않는다.
-  const inputUrl = extractMapUrl(text);
-  if (!inputUrl) {
-    showDraft({ mapUrl: '', name: '', address: '', rawTitle: '', placeId: null, fid: null, cid: null, notice: MSG_NO_LINK, focus: true });
-    return;
-  }
-  const btn = $('#check-btn');
-  btn.disabled = true;
-  btn.textContent = '확인 중...';
-  const r = await callResolver(inputUrl);
-  btn.disabled = false;
-  btn.textContent = '장소 확인';
-  showDraft(buildDraft(inputUrl, r));
-}
-
 // 중복 판정: fid 가 같으면 같은 장소(링크 형식이 달라도). 그 외에는 정규화한 mapUrl 이 같으면 같은 장소.
 // (fid 가 없는 기존 항목과도 mapUrl 로는 비교되도록 두 조건을 OR 로 둔다.)
 function findDuplicate(d) {
@@ -296,205 +230,47 @@ function findDuplicate(d) {
     (d.mapUrl && p.mapUrl && urlKey(p.mapUrl) === urlKey(d.mapUrl)));
 }
 
-async function saveDraft() {
-  const d = state.draft;
-  if (!d) return;
-  const name = singleLine($('#draft-name').value); // 사용자가 화면에서 확인한 값
-  if (!name && !d.mapUrl) { toast('이름을 입력하세요'); $('#draft-name').focus(); return; }
-  const cat = state.saveCat;
+// 장소 등록(한 단계): 입력 -> (링크면 Worker 조회) -> 풀에 저장 -> 일정에 추가.
+// 가정: 구글맵 링크가 없으면 입력 전체를 이름으로 쓴다. 링크인데 이름을 못 얻은 경우에만 이름 입력을 한 번 더 받는다.
+// 이미 등록된 장소(fid 또는 링크 동일)면 새로 만들지 않고 기존 장소를 그대로 일정에 넣는다.
+// 반환: { done: true } | { needName: true, draft } | { error: '메시지' }
+async function registerAndAdd(text, pending, nameOverride) {
+  let d = pending;
+  if (!d) {
+    const raw = String(text || '');
+    if (!raw.trim()) return { error: '입력한 내용이 없어요' };
+    const url = extractMapUrl(raw);
+    if (url) {
+      d = buildDraft(url, await callResolver(url));
+    } else {
+      const nm = singleLine(raw);
+      if (!nm) return { error: '입력한 내용이 없어요' };
+      d = { mapUrl: '', name: nm, rawTitle: '', placeId: null, fid: null, cid: null, notice: '' };
+    }
+  }
+  const name = singleLine(nameOverride != null ? nameOverride : d.name);
+  if (!name && !d.mapUrl) return { error: '이름을 입력하세요' };
+  if (!name) return { needName: true, draft: d };
 
-  // 중복 판정은 응답을 받은 뒤(여기)에서 한다.
+  let poolId;
   const dup = findDuplicate(d);
   if (dup) {
-    const c = await choose('이미 저장된 장소',
-      '"' + (dup.name || '이름 없음') + '" 과(와) 같은 장소임. 덮어쓸까?',
-      [{ label: '취소', value: 'cancel' }, { label: '덮어쓰기', value: 'overwrite', kind: 'primary' }]);
-    if (c !== 'overwrite') return;
-    // 덮어쓰기: 새로 얻은 값만 교체. 비어 있는 새 값(이름, 식별자, 카테고리)이 기존 값을 지우지는 않는다. 메모는 유지.
-    const patch = {};
-    if (name) patch.name = name;
-    if (d.mapUrl) patch.mapUrl = d.mapUrl;
-    if (d.rawTitle) patch.rawTitle = d.rawTitle;
-    if (d.placeId) patch.placeId = d.placeId;
-    if (d.fid) patch.fid = d.fid;
-    if (d.cid) patch.cid = d.cid;
-    if (cat) patch.category = cat;
-    Object.assign(dup, patch);
-    updateDoc(doc(poolCol, dup.id), patch).catch(fail('덮어쓰기'));
-    finishSave();
-    toast('덮어썼음');
-    return;
-  }
-
-  const ref = doc(poolCol);
-  const data = {
-    name,
-    rawTitle: d.rawTitle || '',
-    placeId: d.placeId,
-    fid: d.fid,
-    cid: d.cid,
-    mapUrl: d.mapUrl,        // 입력 URL 에서 추적 파라미터만 제거한 값. 링크가 없으면 빈 문자열
-    category: cat,           // null 허용
-    memo: '',
-    confirmedAt: null,
-    createdAt: Date.now()    // 서버 시각 대신 클라이언트 시각(정렬 용도). 기기 시계 오차는 허용.
-  };
-  // 스냅샷은 state.pool 을 통째로 교체하므로, 낙관적 반영은 쓰기 호출보다 먼저 해야 중복이 안 생긴다.
-  state.pool.push({ id: ref.id, ...data });
-  // 오프라인이면 promise 가 서버 확인까지 대기하므로 await 하지 않는다.
-  setDoc(ref, data).catch(fail('저장'));
-  finishSave();
-  renderPool();
-  toast(name ? '저장했음' : '링크만 저장했음. 이름 채우기로 나중에 채울 수 있어요');
-}
-
-function finishSave() {
-  $('#paste').value = '';
-  state.saveCat = null;
-  backToInput();
-  renderChips();
-}
-
-function startPoolEdit(id) {
-  state.editingPoolId = id;
-  state.focusEdit = true;
-  renderPool();
-}
-
-function finishPoolEdit(p, name, memo) {
-  const patch = { name: singleLine(name), memo: memo.trim() };
-  const fill = state.fill[p.id];
-  if (fill) {
-    if (fill.rawTitle) patch.rawTitle = fill.rawTitle;
-    if (fill.placeId) patch.placeId = fill.placeId;
-    if (fill.fid) patch.fid = fill.fid;
-    if (fill.cid) patch.cid = fill.cid;
-  }
-  delete state.fill[p.id];
-  Object.assign(p, patch);
-  updateDoc(doc(poolCol, p.id), patch).catch(fail('수정'));
-  state.editingPoolId = null;
-  renderPool();
-  renderPlan();
-}
-
-// 이름이 빈 기존 항목(링크만 저장했거나 오프라인에서 저장한 것)을 mapUrl 로 다시 조회해 채운다.
-// 조회 결과는 편집 화면에 미리 채워질 뿐이고, 사용자가 저장을 눌러야 반영된다.
-async function fillName(p) {
-  if (resolving.has(p.id)) return;
-  resolving.add(p.id);
-  toast('이름을 조회하는 중');
-  const r = await callResolver(p.mapUrl);
-  resolving.delete(p.id);
-  const cur = state.pool.find(x => x.id === p.id);
-  if (!cur) return;
-  if (r.kind === 'failed' || r.kind === 'off') {
-    toast('이름 조회에 실패했어요. 온라인에서 다시 눌러 보세요');
-    return;
-  }
-  const d = buildDraft(cur.mapUrl, r);
-  if (r.kind === 'not_place') toast('장소 링크가 아니에요(검색 결과 링크일 수 있어요)');
-  state.fill[cur.id] = d;
-  startPoolEdit(cur.id);
-}
-
-function cycleCategory(p) {
-  const next = CAT_CYCLE[(CAT_CYCLE.indexOf(p.category || null) + 1) % CAT_CYCLE.length];
-  p.category = next;
-  updateDoc(doc(poolCol, p.id), { category: next }).catch(fail('분류 변경'));
-  renderPool();
-}
-
-function assignedDays(poolId) {
-  return [...new Set(state.items.filter(i => i.poolId === poolId).map(i => i.day))].sort((a, b) => a - b);
-}
-
-async function deletePool(p) {
-  const label = p.name || p.rawTitle || '이름 없음';
-  if (!state.itemsLoaded) { toast('일정을 불러오는 중. 잠시 후 다시'); return; }
-  const days = assignedDays(p.id);
-  if (days.length) {
-    await notice('삭제할 수 없음',
-      '"' + label + '" 은(는) ' + days.join(', ') + '일차 일정에 배정돼 있음. 일정 탭에서 배정 해제 후 삭제하세요.');
-    return;
-  }
-  const c = await choose('장소 삭제', '"' + label + '" 을(를) 삭제할까?',
-    [{ label: '취소', value: 'cancel' }, { label: '삭제', value: 'delete', kind: 'danger' }]);
-  if (c !== 'delete') return;
-  state.pool = state.pool.filter(x => x.id !== p.id);
-  deleteDoc(doc(poolCol, p.id)).catch(fail('삭제'));
-  renderPool();
-}
-
-function poolCard(p) {
-  const card = h('li', { class: 'card', 'data-id': p.id });
-  const days = assignedDays(p.id);
-  card.append(h('div', { class: 'card-top' },
-    h('button', {
-      type: 'button',
-      class: 'badge' + (p.category ? '' : ' badge-empty'),
-      onclick: () => cycleCategory(p)
-    }, catLabel(p.category) || '분류 없음'),
-    days.length ? h('span', { class: 'hint' }, days.join(', ') + '일차 배정') : null
-  ));
-
-  if (state.editingPoolId === p.id) {
-    const fill = state.fill[p.id];
-    const nameIn = h('input', { class: 'input name-input', type: 'text', value: p.name || (fill && fill.name) || '', placeholder: '장소 이름' });
-    const memoIn = h('input', { class: 'input', type: 'text', value: p.memo || '', placeholder: '메모 (선택)' });
-    const save = () => finishPoolEdit(p, nameIn.value, memoIn.value);
-    nameIn.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); save(); } });
-    const raw = p.rawTitle || (fill && fill.rawTitle);
-    card.append(
-      fill && fill.notice ? h('div', { class: 'notice' }, fill.notice) : null,
-      raw ? h('div', { class: 'raw' }, '원문: ' + raw) : null,
-      nameIn,
-      fill && fill.address ? h('div', { class: 'address-box' },
-        h('span', { class: 'address' }, fill.address), h('span', { class: 'attrib' }, 'Google Maps')) : null,
-      memoIn,
-      h('div', { class: 'row' },
-        h('button', { type: 'button', class: 'btn', onclick: () => { delete state.fill[p.id]; state.editingPoolId = null; renderPool(); } }, '취소'),
-        h('button', { type: 'button', class: 'btn primary', onclick: save }, '저장'))
-    );
+    poolId = dup.id;
+    if (!dup.name) { dup.name = name; updateDoc(doc(poolCol, dup.id), { name }).catch(fail('이름 저장')); }
   } else {
-    card.append(h('button', {
-      type: 'button',
-      class: 'name' + (p.name ? '' : ' name-empty'),
-      onclick: () => startPoolEdit(p.id)
-    }, p.name || '이름 없음. 탭해서 입력'));
-    if (p.memo) card.append(h('div', { class: 'memo' }, p.memo));
-    const open = mapOpenUrl(p, CONFIG.destinationCity);
-    card.append(h('div', { class: 'row' },
-      open ? h('a', { class: 'btn', href: open, target: '_blank', rel: 'noopener' }, '지도 열기') : null,
-      h('button', { type: 'button', class: 'btn danger', onclick: () => deletePool(p) }, '삭제')));
-    if (!p.name && p.mapUrl && CONFIG.resolverUrl) {
-      card.append(h('div', { class: 'row' },
-        h('button', { type: 'button', class: 'btn', onclick: () => fillName(p) }, '이름 채우기')));
-    }
+    const ref = doc(poolCol);
+    const data = {
+      name, rawTitle: d.rawTitle || '', placeId: d.placeId, fid: d.fid, cid: d.cid,
+      mapUrl: d.mapUrl, category: null, memo: '', confirmedAt: null,
+      createdAt: Date.now()
+    };
+    // 스냅샷은 state.pool 을 통째로 교체하므로 낙관적 반영을 쓰기 호출보다 먼저 한다.
+    state.pool.push({ id: ref.id, ...data });
+    setDoc(ref, data).catch(fail('저장')); // 오프라인 대기 방지: await 하지 않는다
+    poolId = ref.id;
   }
-  return card;
-}
-
-function renderPool() {
-  // 편집 중인 입력칸이 화면에 있으면 다른 기기의 변경으로 입력이 날아가지 않게 재렌더를 미룬다.
-  if (state.editingPoolId && $('#pool-list [data-id="' + state.editingPoolId + '"] input')) return;
-
-  const list = $('#pool-list');
-  list.textContent = '';
-  const sorted = state.pool.slice().sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
-  sorted.forEach(p => list.append(poolCard(p)));
-  $('#pool-count').textContent = '(' + sorted.length + ')';
-  $('#pool-empty').hidden = sorted.length > 0;
-
-  if (state.focusEdit) {
-    state.focusEdit = false;
-    const input = list.querySelector('.name-input');
-    if (input) {
-      input.scrollIntoView({ block: 'center' });
-      input.focus();
-      input.select();
-    }
-  }
+  addItem({ poolId, title: name });
+  return { done: true, dup: !!dup };
 }
 
 /* ---------- 일정 ---------- */
@@ -575,6 +351,7 @@ function renderPlan() {
     tabs.append(h('button', {
       type: 'button',
       class: 'day-tab',
+      'data-day': String(d),
       'aria-selected': String(d === day),
       onclick: () => {
         state.day = d;
@@ -673,16 +450,19 @@ function legBadge(slot) {
   if (leg.status === 'no_place_id') return stat('계산 불가 (장소 ID 없음)');
   if (leg.status === 'same') return stat('같은 장소');
 
-  const w = TC.fmtMode('도보', leg.walk, CONFIG.walkWarnMin);
+  const w = TC.fmtMode('도보', leg.walk, null);
   const t = TC.fmtMode('대중교통', leg.transit, null);
   const hasError = w.state === 'error' || t.state === 'error';
+  // 도보가 walkLongMin(기본 60분) 이상이면 대중교통을 앞에 둔다. 강조 색은 쓰지 않는다.
+  const walkFirst = !(w.state === 'ok' && w.min >= CONFIG.walkLongMin);
+  const parts = walkFirst ? [w, t] : [t, w];
   const onTap = hasError
     ? retry                                            // 실패가 있으면 탭 = 수동 재시도
     : (CONFIG.embedKey ? () => openLegMap(slot, leg) : null);
   const inner = [
-    h('span', { class: 'mode' + (w.warn ? ' warn' : '') }, w.text),
+    h('span', { class: 'mode' }, parts[0].text),
     h('span', { class: 'sep' }, '|'),
-    h('span', { class: 'mode' }, t.text)
+    h('span', { class: 'mode' }, parts[1].text)
   ];
   return h('li', null, onTap
     ? h('button', { type: 'button', class: 'leg', onclick: onTap }, inner)
@@ -766,15 +546,21 @@ function itemCard(it, idx, n) {
   const card = h('li', { class: 'card', 'data-id': it.id });
 
   if (state.editingItemId === it.id) {
-    const custom = !it.poolId;
-    const titleIn = custom ? h('input', { class: 'input first-input', type: 'text', value: it.title || '', placeholder: '장소 이름' }) : null;
-    const timeIn = h('input', { class: 'input' + (custom ? '' : ' first-input'), type: 'time', value: it.time || '' });
+    // 저장된 장소에 연결된 카드는 이름을 고치면 장소 자체의 이름이 바뀐다(같은 장소를 쓰는 다른 일차 카드에도 반영).
+    const titleIn = h('input', { class: 'input first-input', type: 'text', value: p ? (p.name || '') : (it.title || ''), placeholder: '장소 이름' });
+    const timeIn = h('input', { class: 'input', type: 'time', value: it.time || '' });
     const memoIn = h('input', { class: 'input', type: 'text', value: it.memo || '', placeholder: '메모 (선택)' });
     const save = () => {
       const patch = { time: timeIn.value || null, memo: memoIn.value.trim() };
-      if (custom) {
-        const t = singleLine(titleIn.value);
-        if (!t) { toast('이름을 입력하세요'); return; }
+      const t = singleLine(titleIn.value);
+      if (!t) { toast('이름을 입력하세요'); return; }
+      if (p) {
+        if (t !== p.name) {
+          p.name = t;
+          updateDoc(doc(poolCol, p.id), { name: t }).catch(fail('이름 수정'));
+        }
+        patch.title = t;
+      } else {
         patch.title = t;
       }
       Object.assign(it, patch);
@@ -811,7 +597,8 @@ function itemCard(it, idx, n) {
     h('button', { type: 'button', class: 'btn', onclick: () => { state.editingItemId = it.id; state.focusEdit = true; renderPlan(); } }, '수정'),
     p && mapOpenUrl(p, CONFIG.destinationCity)
       ? h('a', { class: 'btn', href: mapOpenUrl(p, CONFIG.destinationCity), target: '_blank', rel: 'noopener' }, '지도') : null,
-    h('button', { type: 'button', class: 'btn danger', onclick: () => removeItem(it) }, '해제')));
+    h('button', { type: 'button', class: 'btn', onclick: () => openMoveDaySheet(it) }, '일차 이동'),
+    h('button', { type: 'button', class: 'btn danger', onclick: () => removeItem(it) }, '삭제')));
   card.append(handle, main);
   return card;
 }
@@ -858,6 +645,8 @@ function startDrag(e, it, card) {
   const rects = cards.map(c => c.getBoundingClientRect());
   let to = from;
   let lastY = startY;
+  let lastX = e.clientX;
+  let hoverDay = 0; // 드래그 중 일차 탭 위에 있으면 그 일차
   let raf = 0;
 
   state.dragging = true;
@@ -865,8 +654,17 @@ function startDrag(e, it, card) {
   list.classList.add('is-dragging');
   cards.forEach((c, i) => { if (i !== from) c.classList.add('shifting'); });
 
+  card.style.pointerEvents = 'none'; // elementFromPoint 가 카드 아래(일차 탭)를 볼 수 있게
   const apply = () => {
     raf = 0;
+    const under = document.elementFromPoint(lastX, lastY);
+    const tab = under && under.closest ? under.closest('.day-tab[data-day]') : null;
+    const hd = tab && +tab.dataset.day !== it.day ? +tab.dataset.day : 0;
+    if (hd !== hoverDay) {
+      document.querySelectorAll('.day-tab.drop-target').forEach(x => x.classList.remove('drop-target'));
+      if (tab && hd) tab.classList.add('drop-target');
+      hoverDay = hd;
+    }
     const dy = lastY - startY + (window.scrollY - startScroll);
     card.style.transform = 'translateY(' + dy + 'px) scale(1.02)';
     // 드래그 중인 카드의 중심이 어느 카드 위에 있는지로 목표 위치를 정한다(문서 좌표 기준)
@@ -878,7 +676,7 @@ function startDrag(e, it, card) {
       if (i < from && center < mid) t = Math.min(t, i);
       if (i > from && center > mid) t = Math.max(t, i);
     });
-    to = t;
+    to = hoverDay ? from : t;
     // 새 순서로 다시 쌓았을 때 각 카드의 top 을 계산한다(카드 사이의 이동시간 배지 간격을 그대로 유지)
     const order = cards.map((c, i) => i);
     order.splice(from, 1);
@@ -903,7 +701,7 @@ function startDrag(e, it, card) {
     schedule();
   }, 16);
 
-  const move = ev => { lastY = ev.clientY; schedule(); };
+  const move = ev => { lastY = ev.clientY; lastX = ev.clientX; schedule(); };
   const finish = commit => {
     clearInterval(scrollTimer);
     if (raf) cancelAnimationFrame(raf);
@@ -913,6 +711,8 @@ function startDrag(e, it, card) {
     try { handle.releasePointerCapture(e.pointerId); } catch (err) { /* 무시 */ }
     state.dragging = false;
     list.classList.remove('is-dragging');
+    document.querySelectorAll('.day-tab.drop-target').forEach(x => x.classList.remove('drop-target'));
+    if (commit && hoverDay) { moveItemToDay(it, hoverDay); return; }
     if (commit) reorderItem(it, to);
     renderPlan(); // 인라인 transform 을 모두 지우고 새 순서로 다시 그린다
     if (commit) { legImmediate = false; scheduleLegs(); }
@@ -924,14 +724,56 @@ function startDrag(e, it, card) {
   handle.addEventListener('pointercancel', cancel);
 }
 
-async function removeItem(it) {
-  const c = await choose('배정 해제', '"' + itemTitle(it) + '" 을(를) 이 일차에서 뺄까? 장소 풀에는 남음.',
-    [{ label: '취소', value: 'cancel' }, { label: '해제', value: 'del', kind: 'danger' }]);
-  if (c !== 'del') return;
+// 확인창 없이 바로 지우고, 토스트의 실행취소로 같은 문서 ID 그대로 되살린다(장소 풀은 건드리지 않는다).
+function removeItem(it) {
+  const data = { day: it.day, order: it.order || 0, poolId: it.poolId || null, title: it.title || '', time: it.time || null, memo: it.memo || '' };
   state.items = state.items.filter(x => x.id !== it.id);
   deleteDoc(doc(itemsCol, it.id)).catch(fail('삭제'));
-  renderPool();
   renderPlan();
+  toast('"' + itemTitle(it) + '" 삭제함', {
+    label: '실행취소',
+    onclick: () => {
+      if (!state.items.some(x => x.id === it.id)) state.items.push({ id: it.id, ...data });
+      setDoc(doc(itemsCol, it.id), data).catch(fail('되살리기'));
+      renderPlan();
+    }
+  });
+}
+
+// 다른 일차로 이동: 대상 일차의 맨 뒤에 붙이고, 원래 일차는 order 가 비어도 정렬에 문제없다.
+function moveItemToDay(it, day) {
+  if (!day || day === it.day) return;
+  const order = dayItems(day).reduce((m, x) => Math.max(m, x.order || 0), 0) + 1;
+  const patch = { day, order };
+  Object.assign(it, patch);
+  updateDoc(doc(itemsCol, it.id), patch).catch(fail('일차 이동'));
+  legImmediate = true;
+  renderPlan();
+  toast(itemTitle(it) + ' -> ' + day + '일차로 옮김');
+}
+
+function totalDays() {
+  const m = model();
+  return Math.max(m.dayCount, m.maxItemDay, state.manualDays, 1);
+}
+
+function openMoveDaySheet(it) {
+  openSheet(close => {
+    const m = model();
+    const total = totalDays();
+    const btns = [];
+    for (let d = 1; d <= total; d++) {
+      if (d === it.day) continue;
+      const date = m.dateOfDay(d);
+      btns.push(h('button', { type: 'button', class: 'pick', onclick: () => { close(); moveItemToDay(it, d); } },
+        d + '일차', h('small', null, date ? fmtDate(date) : ' ')));
+    }
+    return h('div', null,
+      h('h3', null, '어느 일차로 옮길까'),
+      h('p', null, itemTitle(it)),
+      ...btns,
+      h('button', { type: 'button', class: 'btn block', onclick: close }, '닫기'));
+  });
 }
 
 function addItem(fields) {
@@ -948,61 +790,111 @@ function addItem(fields) {
   state.items.push({ id: ref.id, ...data });
   setDoc(ref, data).catch(fail('일정 추가'));
   renderPlan();
-  renderPool();
 }
 
-function openAddSheet() {
-  const day = state.day;
-  openSheet(close => {
-    const filter = h('input', { class: 'input', type: 'search', placeholder: '장소 검색' });
-    const listBox = h('div', null);
+// 저장된 장소 삭제. 일정에 쓰이는 장소는 삭제하지 않는다(카드가 이름을 잃는다).
+async function deletePlace(p) {
+  if (!state.itemsLoaded) { toast('일정을 불러오는 중. 잠시 후 다시'); return; }
+  const used = [...new Set(state.items.filter(i => i.poolId === p.id).map(i => i.day))].sort((a, b) => a - b);
+  const label = p.name || p.rawTitle || '이름 없음';
+  if (used.length) { toast('"' + label + '" 은(는) ' + used.join(', ') + '일차 일정에서 쓰는 중이라 삭제할 수 없어요'); return; }
+  state.pool = state.pool.filter(x => x.id !== p.id);
+  deleteDoc(doc(poolCol, p.id)).catch(fail('삭제'));
+  if (state.onPool) state.onPool();
+  toast('"' + label + '" 삭제함');
+}
 
+// 장소 추가 시트: 목록 화면(저장된 장소 선택)과 등록 화면(한 칸 입력)을 한 시트 안에서 전환한다.
+// opts.register 가 true 면 등록 화면으로 바로 열고 opts.text 를 미리 채운다(공유로 열린 경우).
+function openAddSheet(opts) {
+  opts = opts || {};
+  const day = state.day;
+  let closeSheet = () => {};
+
+  const view = h('div', null);
+  const done = () => { state.onPool = null; closeSheet(); };
+
+  const showList = () => {
+    view.textContent = '';
+    const filter = h('input', { class: 'input', type: 'search', placeholder: '저장된 장소 검색' });
+    const listBox = h('div', null);
     const renderList = () => {
       listBox.textContent = '';
       const q = filter.value.trim().toLowerCase();
       const rows = state.pool
-        .filter(p => !q || (p.name + ' ' + p.rawTitle + ' ' + p.memo).toLowerCase().includes(q))
+        .filter(p => !q || ((p.name || '') + ' ' + (p.rawTitle || '') + ' ' + (p.memo || '')).toLowerCase().includes(q))
         .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
-      if (!rows.length) listBox.append(h('div', { class: 'empty' }, state.pool.length ? '검색 결과 없음' : '장소 풀이 비어 있음'));
+      if (!rows.length) listBox.append(h('div', { class: 'empty' }, state.pool.length ? '검색 결과 없음' : '저장된 장소가 없어요. 위의 장소 등록으로 추가하세요'));
       rows.forEach(p => {
         const cnt = state.items.filter(i => i.poolId === p.id).length;
-        listBox.append(h('button', {
-          type: 'button', class: 'pick',
-          onclick: () => {
-            addItem({ poolId: p.id, title: p.name || p.rawTitle });
-            toast(day + '일차에 추가함');
-            renderList();
-          }
-        },
-          p.name || p.rawTitle || '(이름 없음)',
-          h('small', null, [catLabel(p.category), cnt ? '배정 ' + cnt + '회' : ''].filter(Boolean).join(' / ') || ' ')));
+        listBox.append(h('div', { class: 'pick-row' },
+          h('button', {
+            type: 'button', class: 'pick',
+            onclick: () => {
+              addItem({ poolId: p.id, title: p.name || p.rawTitle });
+              toast(day + '일차에 추가함');
+              done(); // 추가 후 시트도 닫는다
+            }
+          },
+            p.name || p.rawTitle || '(이름 없음)',
+            h('small', null, cnt ? '배정 ' + cnt + '회' : ' ')),
+          h('button', { type: 'button', class: 'pick-del', 'aria-label': '저장된 장소 삭제', onclick: () => deletePlace(p) }, '삭제')));
       });
     };
     filter.addEventListener('input', renderList);
+    state.onPool = renderList; // 다른 기기에서 장소가 추가되면 목록도 갱신
     renderList();
-
-    const cTitle = h('input', { class: 'input', type: 'text', placeholder: '장소 이름' });
-    const cTime = h('input', { class: 'input', type: 'time' });
-    const cMemo = h('input', { class: 'input', type: 'text', placeholder: '메모 (선택)' });
-    const custom = h('details', { class: 'custom' },
-      h('summary', null, '풀에 없는 장소 직접 입력'),
-      cTitle, cTime, cMemo,
-      h('button', {
-        type: 'button', class: 'btn primary block',
-        onclick: () => {
-          const t = singleLine(cTitle.value);
-          if (!t) { toast('이름을 입력하세요'); cTitle.focus(); return; }
-          addItem({ poolId: null, title: t, time: cTime.value, memo: cMemo.value.trim() });
-          toast(day + '일차에 추가함');
-          close();
-        }
-      }, '일정에 추가'));
-
-    return h('div', null,
+    view.append(
       h('h3', null, day + '일차에 추가'),
-      custom, filter, h('div', { style: 'height:8px' }), listBox,
-      h('button', { type: 'button', class: 'btn block', onclick: close }, '닫기'));
-  });
+      h('button', { type: 'button', class: 'btn primary block reg-open', onclick: () => showRegister('') }, '+ 장소 등록'),
+      h('div', { style: 'height:12px' }), filter, h('div', { style: 'height:8px' }), listBox,
+      h('button', { type: 'button', class: 'btn block', onclick: done }, '닫기'));
+  };
+
+  const showRegister = (text) => {
+    state.onPool = null;
+    view.textContent = '';
+    let pending = null; // 링크는 읽었지만 이름을 못 얻어 이름 입력을 기다리는 상태
+    const input = h('textarea', { class: 'input', rows: 3, placeholder: '구글맵 링크 또는 장소 이름' });
+    input.value = text || '';
+    const nameIn = h('input', { class: 'input', type: 'text', placeholder: '장소 이름' });
+    const msg = h('div', { class: 'notice' });
+    const nameBox = h('div', { hidden: true }, msg, nameIn);
+    const go = h('button', { type: 'button', class: 'btn primary block' }, day + '일차에 저장하고 추가');
+    let busy = false;
+    const submit = async () => {
+      if (busy) return;
+      if (!state.poolLoaded) { toast('장소를 불러오는 중이에요. 잠시 후 다시'); return; }
+      busy = true; go.disabled = true; go.textContent = '확인 중...';
+      const r = await registerAndAdd(input.value, pending, pending ? nameIn.value : null);
+      busy = false; go.disabled = false; go.textContent = day + '일차에 저장하고 추가';
+      if (r.error) { toast(r.error); (pending ? nameIn : input).focus(); return; }
+      if (r.needName) {
+        pending = r.draft;
+        msg.textContent = r.draft.notice;
+        nameIn.value = r.draft.name || '';
+        nameBox.hidden = false;
+        nameIn.focus();
+        return;
+      }
+      toast(r.dup ? '이미 있는 장소라 그대로 ' + day + '일차에 추가함' : day + '일차에 추가함');
+      done();
+    };
+    go.addEventListener('click', submit);
+    nameIn.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); submit(); } });
+    // 링크를 고쳐 붙이면 이전에 읽은 결과는 버린다
+    input.addEventListener('input', () => { pending = null; nameBox.hidden = true; });
+    view.append(
+      h('h3', null, '장소 등록'),
+      input, nameBox, go,
+      h('button', { type: 'button', class: 'btn block', onclick: showList }, '뒤로'));
+    setTimeout(() => input.focus(), 0);
+  };
+
+  closeSheet = openSheet(() => {
+    if (opts.register) showRegister(opts.text); else showList();
+    return view;
+  }, () => { state.onPool = null; });
 }
 
 function openDatesSheet() {
@@ -1399,7 +1291,6 @@ function renderAll() {
 
 function showTab(name) {
   state.tab = name;
-  $('#tab-pool').hidden = name !== 'pool';
   $('#tab-plan').hidden = name !== 'plan';
   $('#tab-settings').hidden = name !== 'settings';
   document.querySelectorAll('.tabbar button').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
@@ -1421,14 +1312,14 @@ function subscribe() {
 
   onSnapshot(poolCol, snap => {
     state.pool = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-    renderPool();
+    state.poolLoaded = true;
     renderPlan();
+    if (state.onPool) state.onPool();
   }, fail('장소 읽기'));
 
   onSnapshot(itemsCol, snap => {
     state.items = snap.docs.map(d => ({ id: d.id, ...d.data() }));
     state.itemsLoaded = true;
-    renderPool();
     renderAll();
   }, fail('일정 읽기'));
 
@@ -1455,21 +1346,17 @@ function init() {
   state.manualDays = state.day;
 
   renderHeader();
-  renderChips();
   readShare();
 
-  $('#check-btn').addEventListener('click', checkPlace);
-  $('#save-btn').addEventListener('click', saveDraft);
-  $('#back-btn').addEventListener('click', backToInput);
-  $('#draft-name').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); saveDraft(); } });
-  $('#clear-btn').addEventListener('click', () => { $('#paste').value = ''; });
-  $('#add-item-btn').addEventListener('click', openAddSheet);
+  $('#add-item-btn').addEventListener('click', () => openAddSheet());
   $('#dates-btn').addEventListener('click', openDatesSheet);
   $('#route-btn').addEventListener('click', openRouteSheet);
   $('#export-btn').addEventListener('click', exportJson);
   document.querySelectorAll('.tabbar button').forEach(b => b.addEventListener('click', () => showTab(b.dataset.tab)));
 
   subscribe();
+  showTab('plan');
+  if (state.sharedText) openAddSheet({ register: true, text: state.sharedText });
 
   if ('serviceWorker' in navigator) {
     // 상대경로: 레포 하위 경로에 배포돼도 이 페이지와 같은 디렉터리의 sw.js 를 등록한다.
