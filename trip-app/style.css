@@ -364,3 +364,12 @@ details.custom summary { min-height: 48px; display: flex; align-items: center; f
 .night-list div { padding: 2px 0; }
 .night-list .none { color: #b54708; }
 .night-list .overlap { color: var(--danger); }
+
+/* 실행취소 토스트, 일차 탭 드롭 대상, 장소 목록 행 */
+.toast { display: flex; align-items: center; justify-content: center; gap: 12px; }
+.toast-act { border: 0; background: none; color: #7dd3c8; font: inherit; font-weight: 700; padding: 4px 8px; }
+.day-tabs { position: sticky; top: 0; z-index: 20; background: var(--bg); margin: 0 -16px; padding: 8px 16px 10px; }
+.day-tab.drop-target { background: var(--theme); color: #fff; transform: scale(1.08); box-shadow: 0 0 0 3px color-mix(in srgb, var(--theme) 25%, transparent); }
+.pick-row { display: flex; gap: 6px; align-items: stretch; margin-bottom: 8px; }
+.pick-row .pick { flex: 1; margin: 0; }
+.pick-del { flex: 0 0 auto; border: 0; background: none; color: var(--muted); font: inherit; font-size: 13px; padding: 0 10px; }

@@ -55,12 +55,16 @@ function h(tag, attrs, ...kids) {
 }
 
 let toastTimer = null;
-function toast(msg) {
+// action: { label, onclick } 를 주면 토스트에 버튼이 붙고 5초 유지된다(실행취소 용).
+function toast(msg, action) {
   const t = $('#toast');
   t.textContent = msg;
+  if (action) {
+    t.append(h('button', { type: 'button', class: 'toast-act', onclick: () => { t.hidden = true; clearTimeout(toastTimer); action.onclick(); } }, action.label));
+  }
   t.hidden = false;
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => { t.hidden = true; }, 2500);
+  toastTimer = setTimeout(() => { t.hidden = true; }, action ? 5000 : 2500);
 }
 
 function fail(prefix) {
@@ -347,6 +351,7 @@ function renderPlan() {
     tabs.append(h('button', {
       type: 'button',
       class: 'day-tab',
+      'data-day': String(d),
       'aria-selected': String(d === day),
       onclick: () => {
         state.day = d;
@@ -538,15 +543,21 @@ function itemCard(it, idx, n) {
   const card = h('li', { class: 'card', 'data-id': it.id });
 
   if (state.editingItemId === it.id) {
-    const custom = !it.poolId;
-    const titleIn = custom ? h('input', { class: 'input first-input', type: 'text', value: it.title || '', placeholder: '장소 이름' }) : null;
-    const timeIn = h('input', { class: 'input' + (custom ? '' : ' first-input'), type: 'time', value: it.time || '' });
+    // 저장된 장소에 연결된 카드는 이름을 고치면 장소 자체의 이름이 바뀐다(같은 장소를 쓰는 다른 일차 카드에도 반영).
+    const titleIn = h('input', { class: 'input first-input', type: 'text', value: p ? (p.name || '') : (it.title || ''), placeholder: '장소 이름' });
+    const timeIn = h('input', { class: 'input', type: 'time', value: it.time || '' });
     const memoIn = h('input', { class: 'input', type: 'text', value: it.memo || '', placeholder: '메모 (선택)' });
     const save = () => {
       const patch = { time: timeIn.value || null, memo: memoIn.value.trim() };
-      if (custom) {
-        const t = singleLine(titleIn.value);
-        if (!t) { toast('이름을 입력하세요'); return; }
+      const t = singleLine(titleIn.value);
+      if (!t) { toast('이름을 입력하세요'); return; }
+      if (p) {
+        if (t !== p.name) {
+          p.name = t;
+          updateDoc(doc(poolCol, p.id), { name: t }).catch(fail('이름 수정'));
+        }
+        patch.title = t;
+      } else {
         patch.title = t;
       }
       Object.assign(it, patch);
@@ -583,7 +594,8 @@ function itemCard(it, idx, n) {
     h('button', { type: 'button', class: 'btn', onclick: () => { state.editingItemId = it.id; state.focusEdit = true; renderPlan(); } }, '수정'),
     p && mapOpenUrl(p, CONFIG.destinationCity)
       ? h('a', { class: 'btn', href: mapOpenUrl(p, CONFIG.destinationCity), target: '_blank', rel: 'noopener' }, '지도') : null,
-    h('button', { type: 'button', class: 'btn danger', onclick: () => removeItem(it) }, '해제')));
+    h('button', { type: 'button', class: 'btn', onclick: () => openMoveDaySheet(it) }, '일차 이동'),
+    h('button', { type: 'button', class: 'btn danger', onclick: () => removeItem(it) }, '삭제')));
   card.append(handle, main);
   return card;
 }
@@ -630,6 +642,8 @@ function startDrag(e, it, card) {
   const rects = cards.map(c => c.getBoundingClientRect());
   let to = from;
   let lastY = startY;
+  let lastX = e.clientX;
+  let hoverDay = 0; // 드래그 중 일차 탭 위에 있으면 그 일차
   let raf = 0;
 
   state.dragging = true;
@@ -637,8 +651,17 @@ function startDrag(e, it, card) {
   list.classList.add('is-dragging');
   cards.forEach((c, i) => { if (i !== from) c.classList.add('shifting'); });
 
+  card.style.pointerEvents = 'none'; // elementFromPoint 가 카드 아래(일차 탭)를 볼 수 있게
   const apply = () => {
     raf = 0;
+    const under = document.elementFromPoint(lastX, lastY);
+    const tab = under && under.closest ? under.closest('.day-tab[data-day]') : null;
+    const hd = tab && +tab.dataset.day !== it.day ? +tab.dataset.day : 0;
+    if (hd !== hoverDay) {
+      document.querySelectorAll('.day-tab.drop-target').forEach(x => x.classList.remove('drop-target'));
+      if (tab && hd) tab.classList.add('drop-target');
+      hoverDay = hd;
+    }
     const dy = lastY - startY + (window.scrollY - startScroll);
     card.style.transform = 'translateY(' + dy + 'px) scale(1.02)';
     // 드래그 중인 카드의 중심이 어느 카드 위에 있는지로 목표 위치를 정한다(문서 좌표 기준)
@@ -650,7 +673,7 @@ function startDrag(e, it, card) {
       if (i < from && center < mid) t = Math.min(t, i);
       if (i > from && center > mid) t = Math.max(t, i);
     });
-    to = t;
+    to = hoverDay ? from : t;
     // 새 순서로 다시 쌓았을 때 각 카드의 top 을 계산한다(카드 사이의 이동시간 배지 간격을 그대로 유지)
     const order = cards.map((c, i) => i);
     order.splice(from, 1);
@@ -675,7 +698,7 @@ function startDrag(e, it, card) {
     schedule();
   }, 16);
 
-  const move = ev => { lastY = ev.clientY; schedule(); };
+  const move = ev => { lastY = ev.clientY; lastX = ev.clientX; schedule(); };
   const finish = commit => {
     clearInterval(scrollTimer);
     if (raf) cancelAnimationFrame(raf);
@@ -685,6 +708,8 @@ function startDrag(e, it, card) {
     try { handle.releasePointerCapture(e.pointerId); } catch (err) { /* 무시 */ }
     state.dragging = false;
     list.classList.remove('is-dragging');
+    document.querySelectorAll('.day-tab.drop-target').forEach(x => x.classList.remove('drop-target'));
+    if (commit && hoverDay) { moveItemToDay(it, hoverDay); return; }
     if (commit) reorderItem(it, to);
     renderPlan(); // 인라인 transform 을 모두 지우고 새 순서로 다시 그린다
     if (commit) { legImmediate = false; scheduleLegs(); }
@@ -696,13 +721,56 @@ function startDrag(e, it, card) {
   handle.addEventListener('pointercancel', cancel);
 }
 
-async function removeItem(it) {
-  const c = await choose('배정 해제', '"' + itemTitle(it) + '" 을(를) 이 일차에서 뺄까? 장소 풀에는 남음.',
-    [{ label: '취소', value: 'cancel' }, { label: '해제', value: 'del', kind: 'danger' }]);
-  if (c !== 'del') return;
+// 확인창 없이 바로 지우고, 토스트의 실행취소로 같은 문서 ID 그대로 되살린다(장소 풀은 건드리지 않는다).
+function removeItem(it) {
+  const data = { day: it.day, order: it.order || 0, poolId: it.poolId || null, title: it.title || '', time: it.time || null, memo: it.memo || '' };
   state.items = state.items.filter(x => x.id !== it.id);
   deleteDoc(doc(itemsCol, it.id)).catch(fail('삭제'));
   renderPlan();
+  toast('"' + itemTitle(it) + '" 삭제함', {
+    label: '실행취소',
+    onclick: () => {
+      if (!state.items.some(x => x.id === it.id)) state.items.push({ id: it.id, ...data });
+      setDoc(doc(itemsCol, it.id), data).catch(fail('되살리기'));
+      renderPlan();
+    }
+  });
+}
+
+// 다른 일차로 이동: 대상 일차의 맨 뒤에 붙이고, 원래 일차는 order 가 비어도 정렬에 문제없다.
+function moveItemToDay(it, day) {
+  if (!day || day === it.day) return;
+  const order = dayItems(day).reduce((m, x) => Math.max(m, x.order || 0), 0) + 1;
+  const patch = { day, order };
+  Object.assign(it, patch);
+  updateDoc(doc(itemsCol, it.id), patch).catch(fail('일차 이동'));
+  legImmediate = true;
+  renderPlan();
+  toast(itemTitle(it) + ' -> ' + day + '일차로 옮김');
+}
+
+function totalDays() {
+  const m = model();
+  return Math.max(m.dayCount, m.maxItemDay, state.manualDays, 1);
+}
+
+function openMoveDaySheet(it) {
+  openSheet(close => {
+    const m = model();
+    const total = totalDays();
+    const btns = [];
+    for (let d = 1; d <= total; d++) {
+      if (d === it.day) continue;
+      const date = m.dateOfDay(d);
+      btns.push(h('button', { type: 'button', class: 'pick', onclick: () => { close(); moveItemToDay(it, d); } },
+        d + '일차', h('small', null, date ? fmtDate(date) : ' ')));
+    }
+    return h('div', null,
+      h('h3', null, '어느 일차로 옮길까'),
+      h('p', null, itemTitle(it)),
+      ...btns,
+      h('button', { type: 'button', class: 'btn block', onclick: close }, '닫기'));
+  });
 }
 
 function addItem(fields) {
@@ -719,6 +787,18 @@ function addItem(fields) {
   state.items.push({ id: ref.id, ...data });
   setDoc(ref, data).catch(fail('일정 추가'));
   renderPlan();
+}
+
+// 저장된 장소 삭제. 일정에 쓰이는 장소는 삭제하지 않는다(카드가 이름을 잃는다).
+async function deletePlace(p) {
+  if (!state.itemsLoaded) { toast('일정을 불러오는 중. 잠시 후 다시'); return; }
+  const used = [...new Set(state.items.filter(i => i.poolId === p.id).map(i => i.day))].sort((a, b) => a - b);
+  const label = p.name || p.rawTitle || '이름 없음';
+  if (used.length) { toast('"' + label + '" 은(는) ' + used.join(', ') + '일차 일정에서 쓰는 중이라 삭제할 수 없어요'); return; }
+  state.pool = state.pool.filter(x => x.id !== p.id);
+  deleteDoc(doc(poolCol, p.id)).catch(fail('삭제'));
+  if (state.onPool) state.onPool();
+  toast('"' + label + '" 삭제함');
 }
 
 // 장소 추가 시트: 목록 화면(저장된 장소 선택)과 등록 화면(한 칸 입력)을 한 시트 안에서 전환한다.
@@ -744,16 +824,18 @@ function openAddSheet(opts) {
       if (!rows.length) listBox.append(h('div', { class: 'empty' }, state.pool.length ? '검색 결과 없음' : '저장된 장소가 없어요. 위의 장소 등록으로 추가하세요'));
       rows.forEach(p => {
         const cnt = state.items.filter(i => i.poolId === p.id).length;
-        listBox.append(h('button', {
-          type: 'button', class: 'pick',
-          onclick: () => {
-            addItem({ poolId: p.id, title: p.name || p.rawTitle });
-            toast(day + '일차에 추가함');
-            done(); // 추가 후 시트도 닫는다
-          }
-        },
-          p.name || p.rawTitle || '(이름 없음)',
-          h('small', null, cnt ? '배정 ' + cnt + '회' : ' ')));
+        listBox.append(h('div', { class: 'pick-row' },
+          h('button', {
+            type: 'button', class: 'pick',
+            onclick: () => {
+              addItem({ poolId: p.id, title: p.name || p.rawTitle });
+              toast(day + '일차에 추가함');
+              done(); // 추가 후 시트도 닫는다
+            }
+          },
+            p.name || p.rawTitle || '(이름 없음)',
+            h('small', null, cnt ? '배정 ' + cnt + '회' : ' ')),
+          h('button', { type: 'button', class: 'pick-del', 'aria-label': '저장된 장소 삭제', onclick: () => deletePlace(p) }, '삭제')));
       });
     };
     filter.addEventListener('input', renderList);
