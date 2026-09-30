@@ -1,7 +1,7 @@
 // 앱 셸 캐시. 모든 경로는 서비스워커 위치 기준 상대경로라 레포 하위 경로 배포에서도 깨지지 않는다.
-const CACHE = 'trip-shell-v6';
+const CACHE = 'trip-shell-v7';
 const SHELL = [
-  './', 'index.html', 'style.css', 'app.js', 'parse.js', 'trip-calc.js', 'legs.js', 'config.js', 'firebase.js',
+  './', 'index.html', 'style.css', 'app.js', 'parse.js', 'trip-calc.js', 'legs.js', 'config.js', 'firebase.js', 'vault.js', 'vault-ui.js',
   'manifest.json', 'icons/icon-192.png', 'icons/icon-512.png'
 ];
 
@@ -17,10 +17,17 @@ self.addEventListener('activate', e => {
   );
 });
 
+// 금고(/vault) 요청은 오리진, 메서드, 쿼리와 상관없이 무조건 통과시킨다: 가로채지도, 캐시에 넣지도 않는다.
+// (Worker 주소의 경로가 하위 경로여도 잡히도록 끝 경로 조각으로 판정한다.)
+function isVaultRequest(url) {
+  return /(^|\/)vault\/?$/.test(url.pathname);
+}
+
 self.addEventListener('fetch', e => {
   const req = e.request;
-  if (req.method !== 'GET') return;
   const url = new URL(req.url);
+  if (isVaultRequest(url)) return; // respondWith 를 부르지 않으면 브라우저가 그대로 네트워크로 보낸다
+  if (req.method !== 'GET') return;
 
   // 버전이 박힌 Firebase SDK 는 불변이므로 캐시 우선.
   if (url.hostname === 'www.gstatic.com' && url.pathname.startsWith('/firebasejs/')) {

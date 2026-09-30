@@ -5,6 +5,8 @@ import {
 import { extractMapUrl, cleanMapUrl, joinShareParams, urlKey, mapOpenUrl } from './parse.js';
 import * as TC from './trip-calc.js';
 import { createLegsService, legKey } from './legs.js';
+import { createVault } from './vault.js';
+import { openVaultModal } from './vault-ui.js';
 
 
 const tripRef = doc(db, 'trips', CONFIG.tripId);
@@ -1275,6 +1277,25 @@ async function exportJson() {
   }
 }
 
+/* ---------- 내 정보(금고) ---------- */
+// 조회는 Worker 의 POST {resolverUrl}/vault 뿐이다. 응답은 화면 밖 어디에도 저장하지 않는다(vault.js, vault-ui.js 참고).
+// 저장소는 localStorage 어댑터: "기억"을 켠 경우에만 토큰 하나를 쓴다. 접근이 막혀도 예외는 vault 코어가 삼킨다.
+const vaultTimers = { setTimeout: (fn, ms) => setTimeout(fn, ms), clearTimeout: id => clearTimeout(id) };
+const vault = createVault({
+  getBaseUrl: () => CONFIG.resolverUrl,
+  fetchFn: (url, init) => fetch(url, init),
+  storage: {
+    getItem: k => localStorage.getItem(k),
+    setItem: (k, v) => localStorage.setItem(k, v),
+    removeItem: k => localStorage.removeItem(k)
+  },
+  timers: vaultTimers
+});
+
+function openVault() {
+  openVaultModal({ h, openSheet, toast, vault, timers: vaultTimers, doc: document, clipboard: navigator.clipboard });
+}
+
 /* ---------- 헤더, 탭, 초기화 ---------- */
 
 function renderHeader() {
@@ -1352,6 +1373,8 @@ function init() {
   $('#dates-btn').addEventListener('click', openDatesSheet);
   $('#route-btn').addEventListener('click', openRouteSheet);
   $('#export-btn').addEventListener('click', exportJson);
+  $('#vault-btn-settings').addEventListener('click', openVault);
+  $('#vault-btn-flights').addEventListener('click', openVault);
   document.querySelectorAll('.tabbar button').forEach(b => b.addEventListener('click', () => showTab(b.dataset.tab)));
 
   subscribe();
