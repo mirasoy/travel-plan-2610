@@ -450,16 +450,19 @@ function legBadge(slot) {
   if (leg.status === 'no_place_id') return stat('계산 불가 (장소 ID 없음)');
   if (leg.status === 'same') return stat('같은 장소');
 
-  const w = TC.fmtMode('도보', leg.walk, CONFIG.walkWarnMin);
+  const w = TC.fmtMode('도보', leg.walk, null);
   const t = TC.fmtMode('대중교통', leg.transit, null);
   const hasError = w.state === 'error' || t.state === 'error';
+  // 도보가 walkLongMin(기본 60분) 이상이면 대중교통을 앞에 둔다. 강조 색은 쓰지 않는다.
+  const walkFirst = !(w.state === 'ok' && w.min >= CONFIG.walkLongMin);
+  const parts = walkFirst ? [w, t] : [t, w];
   const onTap = hasError
     ? retry                                            // 실패가 있으면 탭 = 수동 재시도
     : (CONFIG.embedKey ? () => openLegMap(slot, leg) : null);
   const inner = [
-    h('span', { class: 'mode' + (w.warn ? ' warn' : '') }, w.text),
+    h('span', { class: 'mode' }, parts[0].text),
     h('span', { class: 'sep' }, '|'),
-    h('span', { class: 'mode' }, t.text)
+    h('span', { class: 'mode' }, parts[1].text)
   ];
   return h('li', null, onTap
     ? h('button', { type: 'button', class: 'leg', onclick: onTap }, inner)
