@@ -8,6 +8,7 @@ import { createLegsService, legKey } from './legs.js';
 import { createVault } from './vault.js';
 import { openVaultModal } from './vault-ui.js';
 import { resolveKey, extractKey, saveKey, clearKey, inviteLink } from './trip-key.js';
+import { parseExport, summarize, chunk, COLLECTIONS, LIMITS, BATCH_SIZE } from './trip-import.js';
 
 
 // 여행 키는 초대 링크(#k=)로만 들어온다. 없으면 init() 이 잠금 화면만 띄우고 Firestore 에는 아무것도 읽거나 쓰지 않는다.
@@ -1349,6 +1350,70 @@ function registerServiceWorker() {
   }
 }
 
+// JSON 가져오기: 파일 -> 검증(trip-import.js) -> 미리보기(개수, 기존 데이터 경고) -> 확인 후 배치로 쓴다.
+// 같은 ID 의 문서는 가져온 내용으로 바뀌고 나머지는 그대로다. 삭제는 하지 않는다. 같은 파일을 다시 가져와도 결과가 같다(멱등).
+function pickImportFile() {
+  const input = h('input', { type: 'file', accept: 'application/json,.json' });
+  input.addEventListener('change', () => { const f = input.files && input.files[0]; if (f) importJson(f); });
+  input.click();
+}
+
+async function countExisting() {
+  let n = 0;
+  for (const c of COLLECTIONS) n += (await getDocs(collection(tripRef, c))).size;
+  return n;
+}
+
+function confirmImport(parsed, existingCount) {
+  return new Promise(resolve => {
+    let done = false;
+    const finish = v => { if (!done) { done = true; resolve(v); } };
+    openSheet(close => h('div', null,
+      h('h3', null, 'JSON 가져오기'),
+      h('p', null, '가져올 데이터: ' + summarize(parsed.counts) + (parsed.trip ? ' + 여행 정보' : '')),
+      parsed.skipped ? h('div', { class: 'notice' }, '형식이 맞지 않아 건너뛰는 문서 ' + parsed.skipped + '건') : null,
+      parsed.sanitized ? h('div', { class: 'notice' }, '지도 링크가 안전하지 않아 링크만 비우는 문서 ' + parsed.sanitized + '건') : null,
+      existingCount
+        ? h('div', { class: 'notice' }, '이 여행에는 이미 ' + existingCount + '건이 있어요. 같은 ID 의 문서는 가져온 내용으로 바뀌고, 나머지는 그대로 남아요. 삭제는 하지 않아요.')
+        : h('p', null, '이 여행은 비어 있어요.'),
+      h('div', { class: 'row' },
+        h('button', { type: 'button', class: 'btn', onclick: () => { finish(false); close(); } }, '취소'),
+        h('button', { type: 'button', class: 'btn primary', onclick: () => { finish(true); close(); } }, '가져오기'))
+    ), () => finish(false));
+  });
+}
+
+async function writeImport(parsed) {
+  let written = 0;
+  try {
+    if (parsed.trip) await setDoc(tripRef, parsed.trip, { merge: true });
+    for (const part of chunk(parsed.docs, BATCH_SIZE)) {
+      const batch = writeBatch(db);
+      part.forEach(d => batch.set(doc(collection(tripRef, d.col), d.id), d.data));
+      await batch.commit();
+      written += part.length;
+      toast('가져오는 중... ' + written + '/' + parsed.docs.length);
+    }
+    toast(written + '건을 가져왔어요');
+  } catch (e) {
+    console.error(e);
+    notice('일부만 가져왔어요', written + '/' + parsed.docs.length + '건을 쓴 뒤 멈췄어요. 같은 파일을 다시 가져오면 이어서 돼요. 오류: ' + (e && e.code ? e.code : '알 수 없음'));
+  }
+}
+
+async function importJson(file) {
+  try {
+    if (file.size > LIMITS.fileBytes) { notice('가져올 수 없어요', '파일이 너무 커요 (최대 5MB)'); return; }
+    if (navigator.onLine === false) { notice('오프라인이에요', '인터넷에 연결된 상태에서 가져와 주세요.'); return; }
+    const parsed = parseExport(await file.text());
+    if (!parsed.ok) { notice('가져올 수 없어요', parsed.message); return; }
+    if (!(await confirmImport(parsed, await countExisting()))) return;
+    await writeImport(parsed);
+  } catch (e) {
+    fail('가져오기')(e);
+  }
+}
+
 /* ---------- 헤더, 탭, 초기화 ---------- */
 
 function renderHeader() {
@@ -1428,6 +1493,7 @@ function init() {
   $('#dates-btn').addEventListener('click', openDatesSheet);
   $('#route-btn').addEventListener('click', openRouteSheet);
   $('#export-btn').addEventListener('click', exportJson);
+  $('#import-btn').addEventListener('click', pickImportFile);
   $('#vault-btn-settings').addEventListener('click', openVault);
   $('#vault-btn-flights').addEventListener('click', openVault);
   $('#invite-btn').addEventListener('click', copyInvite);
