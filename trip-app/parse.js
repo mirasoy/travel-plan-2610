@@ -35,7 +35,7 @@ export function joinShareParams(title, text, url) {
 
 // 지도 열기 주소. 우선순위: mapUrl > placeId > cid > 이름+도시 검색. 아무것도 없으면 ''.
 export function mapOpenUrl(p, destinationCity) {
-  if (p.mapUrl) return p.mapUrl;
+  if (p.mapUrl && /^https:\/\//i.test(p.mapUrl)) return p.mapUrl; // javascript: 등 비 https 값은 링크로 내보내지 않는다
   if (p.placeId) {
     const q = encodeURIComponent(p.rawTitle || p.name || '');
     return 'https://www.google.com/maps/search/?api=1&query=' + q + '&query_place_id=' + encodeURIComponent(p.placeId);

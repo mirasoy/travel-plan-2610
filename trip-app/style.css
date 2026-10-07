@@ -392,3 +392,20 @@ details.custom summary { min-height: 48px; display: flex; align-items: center; f
 }
 .vault-val.shown { letter-spacing: 0; background: #fff; border-color: var(--theme); }
 .vault-hint { font-size: 12px; color: var(--muted); margin: 16px 0 4px; }
+
+/* 잠금 화면(초대 링크 필요) */
+.locked { max-width: 640px; margin: 0 auto; padding: 8px 16px; }
+.locked-text { margin: 0 0 12px; color: var(--muted); }
+#locked-form .input { margin-bottom: 8px; }
+#locked-msg { min-height: 20px; }
+
+/* 요약 탭 카드 */
+.sum-card { margin-bottom: 12px; }
+.sum-title { font-size: 13px; font-weight: 700; color: var(--muted); }
+.sum-main { font-size: 20px; font-weight: 800; letter-spacing: -0.02em; margin-top: 2px; }
+.sum-sub { font-size: 15px; font-weight: 700; color: var(--theme); margin-top: 2px; }
+.sum-rows { margin: 12px 0 0; display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; }
+.sum-rows dt { font-size: 13px; color: var(--muted); font-weight: 600; }
+.sum-rows dd { margin: 0; font-size: 14px; word-break: break-word; }
+.sum-note { margin-top: 12px; padding: 10px 12px; font-size: 13px; background: var(--soft); border-radius: 10px; white-space: pre-line; word-break: break-word; }
+.sum-card .btn { margin-top: 12px; }

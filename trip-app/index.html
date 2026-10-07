@@ -15,6 +15,18 @@
   <div id="trip-sub" class="sub"></div>
 </header>
 
+<section id="locked" class="locked" hidden>
+  <h2 class="section-title">초대 링크가 필요해요</h2>
+  <div class="panel">
+    <p class="locked-text">이 여행은 초대 링크로만 열려요. 받은 링크로 다시 들어오거나, 링크(또는 키)를 아래에 붙여넣어 주세요.</p>
+    <form id="locked-form">
+      <input id="locked-input" class="input" type="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="초대 링크 또는 키">
+      <div id="locked-msg" class="notice" role="alert"></div>
+      <button class="btn primary block" type="submit">열기</button>
+    </form>
+  </div>
+</section>
+
 <main>
   <section id="tab-plan" class="tab">
     <div id="day-tabs" class="day-tabs"></div>
@@ -28,6 +40,17 @@
     <div id="day-empty" class="empty" hidden>이 날의 일정이 비어 있음</div>
     <div id="legs-credit" class="attrib credit" hidden>이동시간: Google Maps</div>
     <button id="add-item-btn" class="btn primary block" type="button">장소 추가</button>
+  </section>
+
+  <section id="tab-summary" class="tab" hidden>
+    <h2 class="section-title">항공편</h2>
+    <div id="summary-flights"></div>
+    <h2 class="section-title">숙소</h2>
+    <div id="summary-lodgings"></div>
+    <h2 class="section-title">내 정보</h2>
+    <div class="panel">
+      <button id="vault-btn-summary" class="btn block" type="button" style="margin-top:0">내 정보 보기 (예약번호, 주소 등)</button>
+    </div>
   </section>
 
   <section id="tab-settings" class="tab" hidden>
@@ -47,6 +70,12 @@
     <h2 id="sec-lodgings" class="section-title">숙소</h2>
     <div id="lodgings-box" class="panel"></div>
 
+    <h2 class="section-title">초대</h2>
+    <div class="panel">
+      <button id="invite-btn" class="btn block" type="button" style="margin-top:0">초대 링크 복사</button>
+      <button id="forget-key-btn" class="btn ghost small block" type="button">이 기기에서 키 지우기</button>
+    </div>
+
     <h2 class="section-title">내 정보</h2>
     <div class="panel">
       <button id="vault-btn-settings" class="btn block" type="button" style="margin-top:0">내 정보 보기 (예약번호 등)</button>
@@ -55,12 +84,15 @@
     <h2 class="section-title">데이터</h2>
     <div class="panel">
       <button id="export-btn" class="btn block" type="button" style="margin-top:0">JSON 내보내기</button>
+      <button id="import-btn" class="btn block" type="button">JSON 가져오기</button>
+      <a class="btn ghost small block" href="../archive/past.html">지난 기록 (여행지 투표 등)</a>
     </div>
   </section>
 </main>
 
 <nav class="tabbar">
   <button type="button" data-tab="plan" class="active">일정</button>
+  <button type="button" data-tab="summary">요약</button>
   <button type="button" data-tab="settings">설정</button>
 </nav>
 
