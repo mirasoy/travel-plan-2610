@@ -159,15 +159,46 @@ textarea.input { resize: vertical; }
 .day-head .section-title { font-size: 22px; font-weight: 800; color: var(--text); margin: 12px 4px 8px; letter-spacing: -0.02em; }
 
 /* 일정 카드 + 드래그 핸들 */
-.item { display: flex; gap: 12px; align-items: flex-start; position: relative; touch-action: pan-y; }
+/* 일정 카드: 본문(.swipe-body)이 왼쪽으로 밀리면 뒤에 숨은 삭제 버튼이 드러난다 */
+.item { display: block; padding: 0; position: relative; overflow: hidden; }
+.swipe-body {
+  display: flex; gap: 12px; align-items: flex-start;
+  padding: 16px; background: var(--card); position: relative;
+  touch-action: pan-y;            /* 세로 스크롤은 브라우저, 가로 이동은 우리가 받는다 */
+  transition: transform .2s ease; will-change: transform;
+}
+.item.swiping .swipe-body { transition: none; user-select: none; -webkit-user-select: none; }
+.swipe-del {
+  position: absolute; top: 0; right: 0; bottom: 0; width: 88px;
+  border: 0; background: var(--danger); color: #fff; font: inherit; font-weight: 700;
+}
+/* 닫혀 있을 땐 숨긴다(둥근 모서리 틈으로 빨간색이 비치는 것을 막고, 탭 순서에서도 뺀다). 밀고 있거나 열렸을 때만 보인다. */
+.swipe-del { visibility: hidden; }
+.item.swiping .swipe-del, .item.open .swipe-del { visibility: visible; }
+.swipe-del:focus-visible { outline: 3px solid #fff; outline-offset: -6px; }
 .item-main { flex: 1; min-width: 0; }
 .item-head { display: flex; gap: 12px; align-items: baseline; }
 .item-time { font-weight: 700; font-size: 13px; color: var(--theme); min-width: 44px; font-variant-numeric: tabular-nums; }
 .item-title { font-size: 17px; font-weight: 700; word-break: break-word; }
 .item .memo { margin: 4px 0 0 56px; }
-.item-actions { display: flex; gap: 4px; margin: 8px 0 0 50px; flex-wrap: wrap; }
-.item-actions .btn { min-height: 34px; padding: 0 12px; font-size: 13px; border: 0; background: var(--soft); border-radius: 10px; color: var(--text); }
-.item-actions .btn.danger { color: var(--danger); background: transparent; }
+.item-tools { flex: 0 0 auto; display: flex; align-items: center; margin: -8px -10px 0 0; }
+.icon-btn {
+  width: 40px; height: 40px; padding: 0; border: 0; border-radius: 12px; background: none;
+  display: inline-flex; align-items: center; justify-content: center; color: var(--muted);
+}
+.icon-btn:hover, .icon-btn:focus-visible { background: var(--soft); outline: none; }
+.icon-btn img { width: 26px; height: 26px; display: block; -webkit-user-drag: none; user-select: none; }
+
+/* 더보기(⋯) 메뉴 */
+.menu {
+  position: fixed; z-index: 55; min-width: 140px; padding: 6px;
+  background: #fff; border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow-lift);
+}
+.menu-item {
+  display: block; width: 100%; min-height: 44px; padding: 0 14px; border: 0; border-radius: 10px;
+  background: none; font: inherit; text-align: left; color: var(--text);
+}
+.menu-item:hover, .menu-item:focus-visible { background: var(--soft); outline: none; }
 
 .handle {
   flex: 0 0 auto;
