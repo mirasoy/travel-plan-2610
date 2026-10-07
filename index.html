@@ -296,482 +296,49 @@ header .sub{font-size:0.82rem;opacity:0.85;margin-bottom:14px;}
 
   </div><!-- end flight-wrap -->
 
-  <!-- SECTION 2: HOTELS -->
+  <!-- SECTION 2: LODGING (확정). 공개 페이지이므로 정확한 주소, 예약 코드, 호스트 이름/연락처, 결제 수단은 넣지 않는다. -->
   <div class="section-label" style="margin-top:32px;">숙소</div>
-  <div class="section-title">숙소 후보 TOP 3 (카드 클릭시 상세)</div>
+  <div class="section-title">숙소 확정</div>
+  <div class="flight-wrap">
 
-  <div class="hotel-grid">
-
-    <!-- 1위: 新起里 아파트 (ma2) -->
-    <div class="hotel-card" onclick="openModal('ma2')">
-      <div class="hotel-rank">1위</div>
-      <div class="hotel-thumb"><img src="hotels/xinqili-1.jpg" style="width:100%;height:180px;object-fit:cover;border-radius:12px 12px 0 0;display:block;" onerror="imgErr(this,'X')"></div>
-      <div class="hotel-color c7"></div>
-      <div class="hotel-body">
-        <span class="platform-badge airbnb">Airbnb</span>
-        <div class="hotel-tag-row"><span class="tag-pos">종합1위</span><span class="tag-neg">3층 계단사용</span></div>
-        <div class="hotel-name">新起里 아파트</div>
-        <div class="hotel-loc">시먼딩 | MRT 시먼역 도보 3분</div>
-        <div class="hotel-rating-row"><span class="hotel-score">4.89</span><span class="hotel-reviews">75개 리뷰</span></div>
-        <div class="score-grid">
-          <div class="score-cell"><span class="score-lbl">위치</span><span class="score-val">8.33</span></div>
-          <div class="score-cell"><span class="score-lbl">시설</span><span class="score-val">8.00</span></div>
-          <div class="score-cell"><span class="score-lbl">금액</span><span class="score-val">10.00</span></div>
+    <div class="flight-card" id="lodging-confirmed">
+      <div class="flight-inner">
+        <div class="flight-top">
+          <span class="flight-rank">예약 확정</span>
+          <span class="flight-airline">시먼딩 에어비앤비</span>
+          <span class="flight-sub">Airbnb 예약</span>
         </div>
-        <div class="score-total">종합 89.3점</div>
-        <div class="hotel-price">671,676원</div>
-        <div class="hotel-price-sub">3박 총합 (1박 약 223,892원)</div>
-        <div class="hotel-feature">침실 2 / 독립욕실 2 / 침대 4 — 시먼역 도보 3분</div>
-        <a href="https://www.airbnb.co.kr/rooms/1170836700951503193" target="_blank" class="btn-airbnb" onclick="event.stopPropagation()">Airbnb에서 보기</a>
+        <div class="route-grid">
+          <div class="route-item">
+            <div class="route-dir">체크인</div>
+            <div class="route-flight">11/14(토)</div>
+            <div class="route-time">15:00 이후</div>
+            <div class="route-airports">현지 시각</div>
+          </div>
+          <div class="route-item">
+            <div class="route-dir">체크아웃</div>
+            <div class="route-flight">11/17(화)</div>
+            <div class="route-time">11:00까지</div>
+            <div class="route-airports">현지 시각</div>
+          </div>
+        </div>
+        <div class="flight-meta">
+          <span class="meta-chip">집 전체</span>
+          <span class="meta-chip">성인 5명 (정원 7명)</span>
+          <span class="meta-chip green">완화구 시먼딩 | 지하철 3분</span>
+        </div>
+        <div class="price-row">
+          <span class="price-total">699,929원</span>
+          <span class="price-per">3박 총합 (1박 약 233,310원)</span>
+        </div>
+        <div class="flight-note">무료 취소 10/15(목) 15:00 전까지, 부분 환불 11/7(토) 15:00 전까지 (타이베이 현지 시각)</div>
       </div>
     </div>
 
-    <!-- 2위: Tango Inn Taipei Kaifong (m3) -->
-    <div class="hotel-card" onclick="openModal('m3')">
-      <div class="hotel-rank">2위</div>
-      <div class="hotel-thumb"><img src="hotels/tango-1.jpg" style="width:100%;height:180px;object-fit:cover;border-radius:12px 12px 0 0;display:block;" onerror="imgErr(this,'T')"></div>
-      <div class="hotel-color c3"></div>
-      <div class="hotel-body">
-        <span class="platform-badge booking">Booking.com</span>
-        <div class="hotel-tag-row"><span class="tag-pos">최고동선</span><span class="tag-neg">1인 소파베드</span></div>
-        <div class="hotel-name">Tango Inn Taipei Kaifong</div>
-        <div class="hotel-loc">중정구 | 타이베이역 도보 500m | 위치점수 9.3</div>
-        <div class="hotel-rating-row"><span class="hotel-score">8.7</span><span class="hotel-reviews">우수함 | 1,068개 리뷰</span></div>
-        <div class="score-grid">
-          <div class="score-cell"><span class="score-lbl">위치</span><span class="score-val">9.67</span></div>
-          <div class="score-cell"><span class="score-lbl">시설</span><span class="score-val">8.00</span></div>
-          <div class="score-cell"><span class="score-lbl">금액</span><span class="score-val">7.10</span></div>
-        </div>
-        <div class="score-total">종합 83.1점</div>
-        <div class="hotel-price">945,936원</div>
-        <div class="hotel-price-sub">5인 3박 총합 (세금 포함)</div>
-        <div class="hotel-feature">객실 2개 — 부모자녀 분리, 무료취식, 최고 평점</div>
-        <a href="https://www.booking.com/hotel/tw/tian-yun-lu-zhan-tai-bei-kai-feng.ko.html?checkin=2026-11-14&checkout=2026-11-17&group_adults=5&no_rooms=1" target="_blank" class="btn-bcom" onclick="event.stopPropagation()">Booking.com에서 보기</a>
-      </div>
-    </div>
-
-    <!-- 3위: FC513 아파트 (ma1) -->
-    <div class="hotel-card" onclick="openModal('ma1')">
-      <div class="hotel-rank">3위</div>
-      <div class="hotel-thumb"><img src="hotels/fc513-1.jpg" style="width:100%;height:180px;object-fit:cover;border-radius:12px 12px 0 0;display:block;" onerror="imgErr(this,'F')"></div>
-      <div class="hotel-color c6"></div>
-      <div class="hotel-body">
-        <span class="platform-badge airbnb">Airbnb</span>
-        <div class="hotel-tag-row"><span class="tag-pos">최저가</span><span class="tag-neg">욕실 1개</span></div>
-        <div class="hotel-name">FC513 아파트</div>
-        <div class="hotel-loc">충효푸싱 | MRT 충효푸싱역 도보 3분</div>
-        <div class="hotel-rating-row"><span class="hotel-score">4.92</span><span class="hotel-reviews">12개 리뷰</span></div>
-        <div class="score-grid">
-          <div class="score-cell"><span class="score-lbl">위치</span><span class="score-val">7.83</span></div>
-          <div class="score-cell"><span class="score-lbl">시설</span><span class="score-val">5.20</span></div>
-          <div class="score-cell"><span class="score-lbl">금액</span><span class="score-val">10.00</span></div>
-        </div>
-        <div class="score-total">종합 81.7점</div>
-        <div class="hotel-price">640,152원</div>
-        <div class="hotel-price-sub">3박 총합 (1박 약 213,384원)</div>
-        <div class="hotel-feature">침실 3 / 욕실 1개 (공용) / 침대 4 — MRT 충효푸싱역 도보 3분</div>
-        <a href="https://www.airbnb.co.kr/rooms/1670950355394971873" target="_blank" class="btn-airbnb" onclick="event.stopPropagation()">Airbnb에서 보기</a>
-      </div>
-    </div>
-
-  </div><!-- end hotel-grid -->
+  </div><!-- end lodging -->
 
 </div><!-- end container -->
 
-
-<!-- ===== MODALS ===== -->
-
-<!-- Modal m1: Triple Tiger Inn -->
-<div id="modal-m1" class="modal-overlay" onclick="closeModalOutside(event,'m1')">
-<div class="modal">
-  <div class="modal-header mh1">
-    <div class="modal-title">Taipei Triple Tiger Inn</div>
-    <div class="modal-loc">완후아 지구 (시먼딩) | 중심부 1.3km</div>
-  </div>
-  <div class="modal-body">
-    <div class="modal-photo-area">
-      <div class="modal-photos">
-        <img src="hotels/triple-tiger-1.jpg" alt="객실" style="width:100%;border-radius:8px;margin-bottom:8px;object-fit:cover;max-height:220px;">
-        <div style="display:flex;gap:8px;"><img src="hotels/triple-tiger-2.jpg" alt="객실2" style="flex:1;min-width:0;border-radius:8px;object-fit:cover;max-height:160px;"><img src="hotels/triple-tiger-bath.jpg" alt="화장실" style="flex:1;min-width:0;border-radius:8px;object-fit:cover;max-height:160px;"></div>
-      </div>
-    </div>
-    <div class="modal-section">
-      <div class="modal-section-title">방 구성</div>
-      <div class="room-info">패밀리 스위트 1실 &mdash; 싱글침대 1개 + 더블침대 1개 + 다층침대 1개<br>5인 전원 한 공간 사용</div>
-    </div>
-    <div class="modal-section">
-      <div class="modal-section-title">장단점</div>
-      <div class="pros-cons">
-        <div class="pros">
-          <div class="pros-title">장점</div>
-          <ul>
-            <li>전체 숙소 중 최저가</li>
-            <li>무료 취소 가능</li>
-            <li>5인 한 공간 단독 사용</li>
-          </ul>
-        </div>
-        <div class="cons">
-          <div class="cons-title">단점</div>
-          <ul>
-            <li>다층침대 포함, 숙면 쾌적도 낮을 수 있음</li>
-            <li>시먼딩 외곽 위치</li>
-          </ul>
-        </div>
-      </div>
-    </div>
-    <div class="modal-price-row">
-      <span class="modal-price">498,097원</span>
-      <span class="modal-price-sub">5인 3박 총합</span>
-    </div>
-    <a href="https://www.booking.com/hotel/tw/triple-tiger-taipei.ko.html?checkin=2026-11-14&checkout=2026-11-17&group_adults=5&no_rooms=1" target="_blank" class="btn-modal-book">예약하러 가기</a>
-    <div class="modal-close" onclick="closeModal('m1')">닫기</div>
-  </div>
-</div>
-</div>
-
-<!-- Modal m2: Mayer Inn -->
-<div id="modal-m2" class="modal-overlay" onclick="closeModalOutside(event,'m2')">
-<div class="modal">
-  <div class="modal-header mh2">
-    <div class="modal-title">Mayer Inn</div>
-    <div class="modal-loc">중정구 | 타이베이역 200m | 위치점수 9.3</div>
-  </div>
-  <div class="modal-body">
-    <div class="modal-photo-area">
-      <div class="modal-photos">
-        <img src="hotels/mayer-1.jpg" alt="객실" style="width:100%;border-radius:8px;margin-bottom:8px;object-fit:cover;max-height:220px;">
-        <img src="hotels/mayer-2.jpg" alt="객실2" style="width:100%;border-radius:8px;object-fit:cover;max-height:160px;">
-      </div>
-    </div>
-    <div class="modal-section">
-      <div class="modal-section-title">방 구성</div>
-      <div class="room-info">이코노미룸 1실 &mdash; 더블침대 4개 (8인 규격)<br>5인 전원 한 방 사용</div>
-    </div>
-    <div class="modal-section">
-      <div class="modal-section-title">장단점</div>
-      <div class="pros-cons">
-        <div class="pros">
-          <div class="pros-title">장점</div>
-          <ul>
-            <li>위치 최강 &mdash; 타이베이역 도보 200m</li>
-            <li>대형 이코노미룸, 5인 수용</li>
-            <li>리뷰 4,094개로 신뢰도 높음</li>
-          </ul>
-        </div>
-        <div class="cons">
-          <div class="cons-title">단점</div>
-          <ul>
-            <li>이코노미 등급 &mdash; 쾌적도 기대 낮게</li>
-            <li>조식 정보 없음</li>
-          </ul>
-        </div>
-      </div>
-    </div>
-    <div class="modal-price-row">
-      <span class="modal-price">905,492원</span>
-      <span class="modal-price-sub">5인 3박 총합</span>
-    </div>
-    <a href="https://www.booking.com/hotel/tw/mayer-innmei-ya-shang-lu.ko.html?checkin=2026-11-14&checkout=2026-11-17&group_adults=5&no_rooms=1" target="_blank" class="btn-modal-book">예약하러 가기</a>
-    <div class="modal-close" onclick="closeModal('m2')">닫기</div>
-  </div>
-</div>
-</div>
-
-<!-- Modal m3: Tango Inn -->
-<div id="modal-m3" class="modal-overlay" onclick="closeModalOutside(event,'m3')">
-<div class="modal">
-  <div class="modal-header mh3">
-    <div class="modal-title">Tango Inn Taipei Kaifong <span style="font-size:0.78rem;background:rgba(255,255,255,0.25);padding:2px 8px;border-radius:8px;vertical-align:middle;">추천</span></div>
-    <div class="modal-loc">중정구 | 타이베이역 도보 500m | 위치점수 9.3</div>
-  </div>
-  <div class="modal-body">
-    <div class="modal-photo-area">
-      <div class="modal-photos">
-        <img src="hotels/tango-1.jpg" alt="객실" style="width:100%;border-radius:8px;margin-bottom:8px;object-fit:cover;max-height:220px;">
-        <img src="hotels/tango-2.jpg" alt="객실2" style="width:100%;border-radius:8px;object-fit:cover;max-height:160px;">
-      </div>
-    </div>
-    <div class="modal-section">
-      <div class="modal-section-title">방 구성</div>
-      <div class="room-info">객실 2개 구성<br>챰룸 더블 1개 (더블침대 1개) + 파워트리플 1개 (더블침대 1개 + 소파베드 1개)<br>부모-자녀 공간 분리 가능</div>
-    </div>
-    <div class="modal-section">
-      <div class="modal-section-title">장단점</div>
-      <div class="pros-cons">
-        <div class="pros">
-          <div class="pros-title">장점</div>
-          <ul>
-            <li>Booking.com 중 최고 평점 8.7</li>
-            <li>무료 취소 가능</li>
-            <li>방 2개로 부모·자녀 독립 공간</li>
-            <li>위치점수 9.3 &mdash; 역세권</li>
-          </ul>
-        </div>
-        <div class="cons">
-          <div class="cons-title">단점</div>
-          <ul>
-            <li>소파베드 포함으로 잠자리 차이</li>
-            <li>조식 정보 없음</li>
-          </ul>
-        </div>
-      </div>
-    </div>
-    <div class="modal-price-row">
-      <span class="modal-price">945,936원</span>
-      <span class="modal-price-sub">5인 3박 총합</span>
-    </div>
-    <a href="https://www.booking.com/hotel/tw/tian-yun-lu-zhan-tai-bei-kai-feng.ko.html?checkin=2026-11-14&checkout=2026-11-17&group_adults=5&no_rooms=1" target="_blank" class="btn-modal-book">예약하러 가기</a>
-    <div class="modal-close" onclick="closeModal('m3')">닫기</div>
-  </div>
-</div>
-</div>
-
-<!-- Modal m4: Brown House -->
-<div id="modal-m4" class="modal-overlay" onclick="closeModalOutside(event,'m4')">
-<div class="modal">
-  <div class="modal-header mh4">
-    <div class="modal-title">Brown House Hotel Taipei Main Station</div>
-    <div class="modal-loc">중정구 | 타이베이역 200m | 위치점수 9.6</div>
-  </div>
-  <div class="modal-body">
-    <div class="modal-photo-area">
-      <div class="modal-photos">
-        <img src="hotels/brown-1.jpg" alt="객실" style="width:100%;border-radius:8px;margin-bottom:8px;object-fit:cover;max-height:220px;">
-        <img src="hotels/brown-2.jpg" alt="객실2" style="width:100%;border-radius:8px;object-fit:cover;max-height:160px;">
-      </div>
-    </div>
-    <div class="modal-section">
-      <div class="modal-section-title">방 구성</div>
-      <div class="room-info">객실 2개 구성<br>이코노미 더블 1개 + 슈페리어 쿼드러플 1개<br>주의: 두 객실 모두 창문 없음</div>
-    </div>
-    <div class="modal-section">
-      <div class="modal-section-title">장단점</div>
-      <div class="pros-cons">
-        <div class="pros">
-          <div class="pros-title">장점</div>
-          <ul>
-            <li>Booking.com 중 최고 평점 8.8</li>
-            <li>타이베이역 도보 200m</li>
-            <li>무료 취소 가능</li>
-          </ul>
-        </div>
-        <div class="cons">
-          <div class="cons-title">단점</div>
-          <ul>
-            <li>두 객실 모두 창문 없음</li>
-            <li>조식 정보 없음</li>
-          </ul>
-        </div>
-      </div>
-    </div>
-    <div class="modal-price-row">
-      <span class="modal-price">1,101,657원</span>
-      <span class="modal-price-sub">5인 3박 총합</span>
-    </div>
-    <a href="https://www.booking.com/hotel/tw/cha-se-bu-wu-zhan-qian-lu-dian.ko.html?checkin=2026-11-14&checkout=2026-11-17&group_adults=5&no_rooms=1" target="_blank" class="btn-modal-book">예약하러 가기</a>
-    <div class="modal-close" onclick="closeModal('m4')">닫기</div>
-  </div>
-</div>
-</div>
-
-<!-- Modal m5: Urban Abode -->
-<div id="modal-m5" class="modal-overlay" onclick="closeModalOutside(event,'m5')">
-<div class="modal">
-  <div class="modal-header mh5">
-    <div class="modal-title">Urban Abode Apartment 1 (所在行旅1館)</div>
-    <div class="modal-loc">중정구 | 타이베이역 150m | 위치점수 9.6</div>
-  </div>
-  <div class="modal-body">
-    <div class="modal-photo-area">
-      <div class="modal-photos">
-        <img src="hotels/urban-1.jpg" alt="객실" style="width:100%;border-radius:8px;margin-bottom:8px;object-fit:cover;max-height:220px;">
-        <div style="display:flex;gap:8px;"><img src="hotels/urban-2.jpg" alt="침실" style="flex:1;min-width:0;border-radius:8px;object-fit:cover;max-height:160px;"><img src="hotels/urban-bath.jpg" alt="욕조 전경" style="flex:1;min-width:0;border-radius:8px;object-fit:cover;max-height:160px;"></div>
-      </div>
-    </div>
-    <div class="modal-section">
-      <div class="modal-section-title">방 구성</div>
-      <div class="room-info">아파트 전체 단독 사용 &mdash; 68m²<br>침실 2개 | 욕실 2개 | 침대 5개 (소파베드 포함)</div>
-    </div>
-    <div class="modal-section">
-      <div class="modal-section-title">장단점</div>
-      <div class="pros-cons">
-        <div class="pros">
-          <div class="pros-title">장점</div>
-          <ul>
-            <li>아파트 전체 단독 사용</li>
-            <li>욕실 2개 &mdash; 아침 러쉬 없음</li>
-            <li>68m² 넓은 공간</li>
-            <li>위치점수 9.6 최고</li>
-          </ul>
-        </div>
-        <div class="cons">
-          <div class="cons-title">단점</div>
-          <ul>
-            <li>Booking.com 중 최고가</li>
-            <li>조식 없음 (아파트형)</li>
-            <li>소파베드 포함</li>
-          </ul>
-        </div>
-      </div>
-    </div>
-    <div class="modal-price-row">
-      <span class="modal-price">1,300,198원</span>
-      <span class="modal-price-sub">5인 3박 총합</span>
-    </div>
-    <a href="https://www.booking.com/hotel/tw/suo-zai-xing-lu.ko.html?checkin=2026-11-14&checkout=2026-11-17&group_adults=5&no_rooms=1" target="_blank" class="btn-modal-book">예약하러 가기</a>
-    <div class="modal-close" onclick="closeModal('m5')">닫기</div>
-  </div>
-</div>
-</div>
-
-<!-- Modal ma1: FC513 아파트 -->
-<div id="modal-ma1" class="modal-overlay" onclick="closeModalOutside(event,'ma1')">
-<div class="modal">
-  <div class="modal-header mh6">
-    <div class="modal-title">FC513 아파트</div>
-    <div class="modal-loc">충효푸싱 | MRT 충효푸싱역 도보 3분</div>
-  </div>
-  <div class="modal-body">
-    <div class="modal-photo-area">
-      <div class="modal-photos"><img src="hotels/fc513-1.jpg" alt="FC513" style="width:100%;border-radius:8px;margin-bottom:8px;object-fit:cover;max-height:220px;"><div style="display:flex;gap:8px;"><img src="hotels/fc513-2.jpg" alt="FC513-2" style="flex:1;min-width:0;border-radius:8px;object-fit:cover;max-height:160px;"><img src="hotels/fc513-3.jpg" alt="FC513-3" style="flex:1;min-width:0;border-radius:8px;object-fit:cover;max-height:160px;"></div></div>
-    </div>
-    <div class="modal-section">
-      <div class="modal-section-title">방 구성</div>
-      <div class="room-info">침실 3개 | 욕실 1개 (공용) | 침대 4개<br>MRT 충효푸싱역 도보 3분</div>
-    </div>
-    <div class="modal-section">
-      <div class="modal-section-title">장단점</div>
-      <div class="pros-cons">
-        <div class="pros">
-          <div class="pros-title">장점</div>
-          <ul>
-            <li>전체 후보 중 최저가 (Airbnb 포함)</li>
-            <li>침실 3개로 공간 배분 유연</li>
-            <li>MRT 충효푸싱역 도보 3분</li>
-            <li>평점 4.92</li>
-          </ul>
-        </div>
-        <div class="cons">
-          <div class="cons-title">단점</div>
-          <ul>
-            <li>욕실 1개 공용 &mdash; 5인 아침 동선 주의</li>
-            <li>리뷰 12개 &mdash; 데이터 적음</li>
-          </ul>
-        </div>
-      </div>
-    </div>
-    <div class="modal-price-row">
-      <span class="modal-price">640,152원</span>
-      <span class="modal-price-sub">3박 총합 (1박 약 213,384원)</span>
-    </div>
-    <a href="https://www.airbnb.co.kr/rooms/1670950355394971873" target="_blank" class="btn-modal-airbnb">Airbnb에서 예약하기</a>
-    <div class="modal-close" onclick="closeModal('ma1')">닫기</div>
-  </div>
-</div>
-</div>
-
-<!-- Modal ma2: 新起里 아파트 -->
-<div id="modal-ma2" class="modal-overlay" onclick="closeModalOutside(event,'ma2')">
-<div class="modal">
-  <div class="modal-header mh7">
-    <div class="modal-title">新起里 아파트</div>
-    <div class="modal-loc">시먼딩 | MRT 시먼역 도보 3분</div>
-  </div>
-  <div class="modal-body">
-    <div class="modal-photo-area">
-      <div class="modal-photos"><img src="hotels/xinqili-1.jpg" alt="新起里" style="width:100%;border-radius:8px;margin-bottom:8px;object-fit:cover;max-height:220px;"><div style="display:flex;gap:8px;"><img src="hotels/xinqili-2.jpg" alt="新起里-2" style="flex:1;min-width:0;border-radius:8px;object-fit:cover;max-height:160px;"><img src="hotels/xinqili-3.jpg" alt="新起里-3" style="flex:1;min-width:0;border-radius:8px;object-fit:cover;max-height:160px;"></div></div>
-    </div>
-    <div class="modal-section">
-      <div class="modal-section-title">방 구성</div>
-      <div class="room-info">침실 2개 | 독립 욕실 2개 | 침대 4개<br>MRT 시먼역 도보 3분 &mdash; 시먼딩 쇼핑 중심부</div>
-    </div>
-    <div class="modal-section">
-      <div class="modal-section-title">장단점</div>
-      <div class="pros-cons">
-        <div class="pros">
-          <div class="pros-title">장점</div>
-          <ul>
-            <li>독립 욕실 2개 &mdash; 아침 동선 쾌적</li>
-            <li>시먼역 도보 3분 &mdash; 야시장·쇼핑 즉시</li>
-            <li>리뷰 75개 &mdash; Airbnb 중 최다</li>
-          </ul>
-        </div>
-        <div class="cons">
-          <div class="cons-title">단점</div>
-          <ul>
-            <li>침실 2개 &mdash; 부모-자녀 완전 분리 다소 애매</li>
-            <li>평점 4.89 (Airbnb 중 최저)</li>
-          </ul>
-        </div>
-      </div>
-    </div>
-    <div class="modal-price-row">
-      <span class="modal-price">671,676원</span>
-      <span class="modal-price-sub">3박 총합 (1박 약 223,892원)</span>
-    </div>
-    <a href="https://www.airbnb.co.kr/rooms/1170836700951503193" target="_blank" class="btn-modal-airbnb">Airbnb에서 예약하기</a>
-    <div class="modal-close" onclick="closeModal('ma2')">닫기</div>
-  </div>
-</div>
-</div>
-
-<!-- Modal ma3: 敦安里 아파트 -->
-<div id="modal-ma3" class="modal-overlay" onclick="closeModalOutside(event,'ma3')">
-<div class="modal">
-  <div class="modal-header mh8">
-    <div class="modal-title">敦安里 아파트 <span style="font-size:0.78rem;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:8px;vertical-align:middle;">부모님 분리</span></div>
-    <div class="modal-loc">신이/타이베이101 | MRT 신이안허역 도보 5분</div>
-  </div>
-  <div class="modal-body">
-    <div class="modal-photo-area">
-      <div class="modal-photo-ph">
-        <span>사진 준비 중</span>
-        <span style="font-size:0.7rem;">Airbnb에서 확인 가능</span>
-      </div>
-    </div>
-    <div class="modal-section">
-      <div class="modal-section-title">방 구성</div>
-      <div class="room-info">침실 3개 | 욕실 2개 | 침대 4개<br>신이안허역 도보 5분 &mdash; 타이베이101 인근</div>
-    </div>
-    <div class="modal-section">
-      <div class="modal-section-title">장단점</div>
-      <div class="pros-cons">
-        <div class="pros">
-          <div class="pros-title">장점</div>
-          <ul>
-            <li>Airbnb 중 최고 평점 4.96</li>
-            <li>침실 3개 + 욕실 2개 &mdash; 부모님 완전 분리</li>
-            <li>타이베이101 인근 &mdash; 핵심 관광지 근접</li>
-          </ul>
-        </div>
-        <div class="cons">
-          <div class="cons-title">단점</div>
-          <ul>
-            <li>Airbnb 중 가장 비쌈</li>
-            <li>리뷰 48개 &mdash; 비교적 적음</li>
-            <li>시먼딩 이동 시 MRT 환승 필요</li>
-          </ul>
-        </div>
-      </div>
-    </div>
-    <div class="modal-price-row">
-      <span class="modal-price">868,587원</span>
-      <span class="modal-price-sub">3박 총합 (1박 약 289,529원)</span>
-    </div>
-    <a href="https://www.airbnb.co.kr/rooms/1475162054068250207" target="_blank" class="btn-modal-airbnb">Airbnb에서 예약하기</a>
-    <div class="modal-close" onclick="closeModal('ma3')">닫기</div>
-  </div>
-</div>
-</div>
-
-<!-- Like Popup HTML -->
-<div id="like-overlay" class="like-overlay" style="display:none;" onclick="if(event.target===this)closeLikePopup()">
-  <div class="like-popup">
-    <h3>누구세요?</h3>
-    <div class="member-btns" id="member-btns"></div>
-    <button class="close-btn" onclick="closeLikePopup()">닫기</button>
-  </div>
-</div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
@@ -790,83 +357,6 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-const MEMBERS = ['진숙', '기수', '미라', '상원', '태호'];
-const HOTEL_IDS = ['m1', 'm2', 'm3', 'm4', 'm5', 'ma1', 'ma2', 'ma3'];
-let currentHotelId = null;
-let likesCache = {};
-
-// 모든 hotel-card에 heart-btn 동적 생성
-document.addEventListener('DOMContentLoaded', function() {
-  document.querySelectorAll('.hotel-card').forEach(card => {
-    const onclickAttr = card.getAttribute('onclick');
-    const match = onclickAttr && onclickAttr.match(/openModal\('(\w+)'\)/);
-    if (!match) return;
-    const hotelId = match[1];
-    const heartBtn = document.createElement('button');
-    heartBtn.className = 'heart-btn';
-    heartBtn.id = 'heart-' + hotelId;
-    heartBtn.innerHTML = '&#9829; <span id="count-' + hotelId + '">0</span>명';
-    heartBtn.onclick = (e) => { e.stopPropagation(); openLikePopup(hotelId); };
-    const body = card.querySelector('.hotel-body');
-    if (body) body.appendChild(heartBtn);
-  });
-
-  // 실시간 리스너 등록
-  HOTEL_IDS.forEach(hotelId => {
-    const ref = doc(db, 'hotel_likes', hotelId);
-    onSnapshot(ref, (snap) => {
-      const data = snap.exists() ? snap.data() : {};
-      likesCache[hotelId] = data;
-      updateHeartUI(hotelId, data);
-      // 팝업이 현재 이 호텔 것이라면 멤버 버튼도 갱신
-      if (currentHotelId === hotelId) renderMemberBtns(hotelId, data);
-    });
-  });
-});
-
-function updateHeartUI(hotelId, data) {
-  const count = MEMBERS.filter(m => data[m] === true).length;
-  const countEl = document.getElementById('count-' + hotelId);
-  const heartEl = document.getElementById('heart-' + hotelId);
-  if (countEl) countEl.textContent = count;
-  if (heartEl) {
-    if (count > 0) heartEl.classList.add('has-likes');
-    else heartEl.classList.remove('has-likes');
-  }
-}
-
-function renderMemberBtns(hotelId, data) {
-  const container = document.getElementById('member-btns');
-  container.innerHTML = '';
-  MEMBERS.forEach(name => {
-    const btn = document.createElement('button');
-    btn.className = 'member-btn' + (data[name] ? ' liked' : '');
-    btn.textContent = name;
-    btn.onclick = () => toggleLike(hotelId, name);
-    container.appendChild(btn);
-  });
-}
-
-window.openLikePopup = function(hotelId) {
-  currentHotelId = hotelId;
-  const data = likesCache[hotelId] || {};
-  renderMemberBtns(hotelId, data);
-  document.getElementById('like-overlay').style.display = 'flex';
-};
-
-window.closeLikePopup = function() {
-  document.getElementById('like-overlay').style.display = 'none';
-  currentHotelId = null;
-};
-
-async function toggleLike(hotelId, memberName) {
-  const ref = doc(db, 'hotel_likes', hotelId);
-  const current = likesCache[hotelId] || {};
-  const newVal = !current[memberName];
-  const update = Object.assign({}, current, { [memberName]: newVal });
-  await setDoc(ref, update);
-}
-
 /* ---------- 여행플래너 연동: 항공편/숙소 확정 ----------
    확정 버튼을 누르면 trips/{tripId}/flights|lodgings 에 바로 쓴다. 여행플래너는 이 문서를 읽어
    일정 화면에 도착/출국/숙소 카드로 자동 표시한다(일정 항목으로 복사하지 않는다).
@@ -880,8 +370,12 @@ const FLIGHT_DOCS = {
 };
 const planFlights = { out: null, in: null };  // 현재 확정된 항공편 문서
 let planLodgings = {};                        // id -> 확정된 숙소 문서
-const hotelCards = {};                        // 숙소 id -> { name, btn }
+// 확정 숙소. 이름만 쓴다(정확한 위치는 이 페이지에도 Firestore 에도 넣지 않는다. 플래너에서 직접 입력하는 값은 그 사용자 책임).
+const LODGING = { id: 'stay', name: '시먼딩 에어비앤비' };
+// 예전 후보 카드가 쓰던 문서 ID. 확정할 때 남아 있으면 같이 지워서 플래너에 옛 후보 숙소가 남지 않게 한다.
+const LEGACY_LODGING_IDS = ['m1', 'm2', 'm3', 'm4', 'm5', 'ma1', 'ma2', 'ma3'];
 let flightBtn = null;
+let lodgingBtn = null;
 let planToastTimer = null;
 
 function planToast(msg) {
@@ -904,11 +398,11 @@ function refreshConfirmButtons() {
     flightBtn.classList.toggle('on', on);
     flightBtn.textContent = on ? '일정에 확정됨 (탭하면 취소)' : '이 항공편 일정에 확정';
   }
-  Object.keys(hotelCards).forEach(id => {
-    const on = !!planLodgings[id];
-    hotelCards[id].btn.classList.toggle('on', on);
-    hotelCards[id].btn.textContent = on ? '숙소로 확정됨 (탭하면 취소)' : '이 숙소 일정에 확정';
-  });
+  if (lodgingBtn) {
+    const on = !!planLodgings[LODGING.id];
+    lodgingBtn.classList.toggle('on', on);
+    lodgingBtn.textContent = on ? '숙소로 확정됨 (탭하면 취소)' : '이 숙소 일정에 확정';
+  }
 }
 
 async function confirmFlights() {
@@ -937,21 +431,21 @@ async function confirmFlights() {
   }
 }
 
-async function confirmHotel(id) {
-  const name = hotelCards[id].name;
+async function confirmLodging() {
+  const name = LODGING.name;
   try {
-    if (planLodgings[id]) {
+    if (planLodgings[LODGING.id]) {
       if (!confirm('"' + name + '" 숙소 확정을 취소할까요?')) return;
-      await deleteDoc(doc(db, 'trips', PLAN_TRIP, 'lodgings', id));
+      await deleteDoc(doc(db, 'trips', PLAN_TRIP, 'lodgings', LODGING.id));
       planToast('숙소 확정을 취소했어요');
       return;
     }
     if (!confirm('"' + name + '"을(를) 숙소로 확정할까요?\n(' + TRIP_START + ' ~ ' + TRIP_END + ', 3박)')) return;
-    // 이 페이지의 다른 후보가 확정돼 있으면 해제한다(같은 밤에 숙소가 겹치지 않게). 여행플래너에서 직접 넣은 숙소는 건드리지 않는다.
-    for (const other of Object.keys(hotelCards)) {
-      if (other !== id && planLodgings[other]) await deleteDoc(doc(db, 'trips', PLAN_TRIP, 'lodgings', other));
+    // 예전 후보 카드로 확정해 둔 문서가 있으면 해제한다(같은 밤에 숙소가 겹치지 않게). 여행플래너에서 직접 넣은 숙소는 건드리지 않는다.
+    for (const old of LEGACY_LODGING_IDS) {
+      if (planLodgings[old]) await deleteDoc(doc(db, 'trips', PLAN_TRIP, 'lodgings', old));
     }
-    await setDoc(doc(db, 'trips', PLAN_TRIP, 'lodgings', id), {
+    await setDoc(doc(db, 'trips', PLAN_TRIP, 'lodgings', LODGING.id), {
       name, rawTitle: '', placeId: null, fid: null, cid: null, mapUrl: '',
       checkIn: TRIP_START, checkOut: TRIP_END, memo: '', createdAt: Date.now()
     });
@@ -985,17 +479,12 @@ document.addEventListener('DOMContentLoaded', function() {
     flightInner.appendChild(hint());
   }
 
-  document.querySelectorAll('.hotel-card').forEach(card => {
-    const m = (card.getAttribute('onclick') || '').match(/openModal\('(\w+)'\)/);
-    const nameEl = card.querySelector('.hotel-name');
-    const body = card.querySelector('.hotel-body');
-    if (!m || !nameEl || !body) return;
-    const id = m[1];
-    const btn = mkBtn('이 숙소 일정에 확정', () => confirmHotel(id));
-    hotelCards[id] = { name: nameEl.textContent.trim(), btn };
-    body.appendChild(btn);
-    body.appendChild(hint());
-  });
+  const lodgingInner = document.querySelector('#lodging-confirmed .flight-inner');
+  if (lodgingInner) {
+    lodgingBtn = mkBtn('이 숙소 일정에 확정', confirmLodging);
+    lodgingInner.appendChild(lodgingBtn);
+    lodgingInner.appendChild(hint());
+  }
 
   ['out', 'in'].forEach(id => {
     onSnapshot(doc(db, 'trips', PLAN_TRIP, 'flights', id), snap => {
@@ -1011,32 +500,6 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 
-<script>
-function imgErr(el, initial) {
-  var ph = document.createElement('div');
-  ph.className = 'hotel-thumb-ph';
-  ph.innerHTML = '<span class="hotel-thumb-ph-initial">' + initial + '</span><span class="hotel-thumb-ph-text">사진 준비 중</span>';
-  el.parentNode.replaceChild(ph, el);
-}
-function openModal(id) {
-  document.getElementById('modal-' + id).classList.add('open');
-  document.body.style.overflow = 'hidden';
-}
-function closeModal(id) {
-  document.getElementById('modal-' + id).classList.remove('open');
-  document.body.style.overflow = '';
-}
-function closeModalOutside(e, id) {
-  if (e.target === document.getElementById('modal-' + id)) { closeModal(id); }
-}
-document.addEventListener('keydown', function(e) {
-  if (e.key === 'Escape') {
-    document.querySelectorAll('.modal-overlay.open').forEach(function(m) {
-      m.classList.remove('open');
-    });
-    document.body.style.overflow = '';
-  }
-});
-</script>
+
 </body>
 </html>
