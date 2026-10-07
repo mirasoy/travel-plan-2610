@@ -26,8 +26,7 @@ fi
 ALLOW_GKEY=(
   "trip-app/config.js|embedKey:"
   "trip-app/firebase.js|apiKey:"
-  "index.html|apiKey:"
-  "vote.html|apiKey:"
+  "archive/vote.html|apiKey:"
 )
 
 FOUND=0
