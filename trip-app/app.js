@@ -9,6 +9,7 @@ import { createVault } from './vault.js';
 import { openVaultModal } from './vault-ui.js';
 import { resolveKey, extractKey, saveKey, clearKey, inviteLink } from './trip-key.js';
 import { parseExport, summarize, chunk, COLLECTIONS, LIMITS, BATCH_SIZE } from './trip-import.js';
+import { buildSummary, renderCard } from './trip-summary.js';
 
 
 // 여행 키는 초대 링크(#k=)로만 들어온다. 없으면 init() 이 잠금 화면만 띄우고 Firestore 에는 아무것도 읽거나 쓰지 않는다.
@@ -1351,7 +1352,7 @@ function registerServiceWorker() {
 }
 
 // JSON 가져오기: 파일 -> 검증(trip-import.js) -> 미리보기(개수, 기존 데이터 경고) -> 확인 후 배치로 쓴다.
-// 같은 ID 의 문서는 가져온 내용으로 바뀌고 나머지는 그대로다. 삭제는 하지 않는다. 같은 파일을 다시 가져와도 결과가 같다(멱등).
+// 같은 ID 의 문서는 가져온 필드만 바뀌고(merge) 나머지 필드와 문서는 그대로다. 삭제는 하지 않는다. 같은 파일을 다시 가져와도 결과가 같다(멱등).
 function pickImportFile() {
   const input = h('input', { type: 'file', accept: 'application/json,.json' });
   input.addEventListener('change', () => { const f = input.files && input.files[0]; if (f) importJson(f); });
@@ -1374,7 +1375,7 @@ function confirmImport(parsed, existingCount) {
       parsed.skipped ? h('div', { class: 'notice' }, '형식이 맞지 않아 건너뛰는 문서 ' + parsed.skipped + '건') : null,
       parsed.sanitized ? h('div', { class: 'notice' }, '지도 링크가 안전하지 않아 링크만 비우는 문서 ' + parsed.sanitized + '건') : null,
       existingCount
-        ? h('div', { class: 'notice' }, '이 여행에는 이미 ' + existingCount + '건이 있어요. 같은 ID 의 문서는 가져온 내용으로 바뀌고, 나머지는 그대로 남아요. 삭제는 하지 않아요.')
+        ? h('div', { class: 'notice' }, '이 여행에는 이미 ' + existingCount + '건이 있어요. 같은 ID 의 문서는 가져온 필드만 바뀌고(나머지 필드는 유지), 파일에 없는 문서는 그대로 남아요. 삭제는 하지 않아요.')
         : h('p', null, '이 여행은 비어 있어요.'),
       h('div', { class: 'row' },
         h('button', { type: 'button', class: 'btn', onclick: () => { finish(false); close(); } }, '취소'),
@@ -1389,7 +1390,7 @@ async function writeImport(parsed) {
     if (parsed.trip) await setDoc(tripRef, parsed.trip, { merge: true });
     for (const part of chunk(parsed.docs, BATCH_SIZE)) {
       const batch = writeBatch(db);
-      part.forEach(d => batch.set(doc(collection(tripRef, d.col), d.id), d.data));
+      part.forEach(d => batch.set(doc(collection(tripRef, d.col), d.id), d.data, { merge: true })); // 가져온 필드만 바꾸고 나머지 필드(예: 확정한 공항)는 유지
       await batch.commit();
       written += part.length;
       toast('가져오는 중... ' + written + '/' + parsed.docs.length);
@@ -1414,6 +1415,20 @@ async function importJson(file) {
   }
 }
 
+/* ---------- 요약 탭: 확정된 항공편, 숙소 (Firestore 문서에서 그린다) ---------- */
+
+function renderSummary() {
+  const s = buildSummary({ flights: state.flights, lodgings: state.lodgings });
+  const fill = (sel, cards, emptyText) => {
+    const box = $(sel);
+    box.textContent = '';
+    if (cards.length) cards.forEach(c => box.append(renderCard(h, c)));
+    else box.append(h('div', { class: 'panel empty' }, emptyText));
+  };
+  fill('#summary-flights', s.flights, '등록된 항공편이 없어요. 설정에서 입력하거나 JSON 가져오기로 넣을 수 있어요');
+  fill('#summary-lodgings', s.lodgings, '등록된 숙소가 없어요. 설정에서 추가하거나 JSON 가져오기로 넣을 수 있어요');
+}
+
 /* ---------- 헤더, 탭, 초기화 ---------- */
 
 function renderHeader() {
@@ -1424,6 +1439,7 @@ function renderHeader() {
 
 function renderAll() {
   renderHeader();
+  renderSummary();
   renderPlan();
   renderSettings();
 }
@@ -1431,10 +1447,12 @@ function renderAll() {
 function showTab(name) {
   state.tab = name;
   $('#tab-plan').hidden = name !== 'plan';
+  $('#tab-summary').hidden = name !== 'summary';
   $('#tab-settings').hidden = name !== 'settings';
   document.querySelectorAll('.tabbar button').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
   if (name === 'plan') { legImmediate = true; renderPlan(); } // 일차 화면을 열 때
   if (name === 'settings') renderSettings();
+  if (name === 'summary') renderSummary();
   window.scrollTo(0, 0);
 }
 
@@ -1496,6 +1514,7 @@ function init() {
   $('#import-btn').addEventListener('click', pickImportFile);
   $('#vault-btn-settings').addEventListener('click', openVault);
   $('#vault-btn-flights').addEventListener('click', openVault);
+  $('#vault-btn-summary').addEventListener('click', openVault);
   $('#invite-btn').addEventListener('click', copyInvite);
   $('#forget-key-btn').addEventListener('click', forgetKey);
   document.querySelectorAll('.tabbar button').forEach(b => b.addEventListener('click', () => showTab(b.dataset.tab)));

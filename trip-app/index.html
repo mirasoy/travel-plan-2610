@@ -42,6 +42,17 @@
     <button id="add-item-btn" class="btn primary block" type="button">장소 추가</button>
   </section>
 
+  <section id="tab-summary" class="tab" hidden>
+    <h2 class="section-title">항공편</h2>
+    <div id="summary-flights"></div>
+    <h2 class="section-title">숙소</h2>
+    <div id="summary-lodgings"></div>
+    <h2 class="section-title">내 정보</h2>
+    <div class="panel">
+      <button id="vault-btn-summary" class="btn block" type="button" style="margin-top:0">내 정보 보기 (예약번호, 주소 등)</button>
+    </div>
+  </section>
+
   <section id="tab-settings" class="tab" hidden>
     <h2 class="section-title">여행 날짜</h2>
     <div class="panel">
@@ -80,6 +91,7 @@
 
 <nav class="tabbar">
   <button type="button" data-tab="plan" class="active">일정</button>
+  <button type="button" data-tab="summary">요약</button>
   <button type="button" data-tab="settings">설정</button>
 </nav>
 
