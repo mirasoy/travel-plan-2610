@@ -7,9 +7,19 @@ import * as TC from './trip-calc.js';
 import { createLegsService, legKey } from './legs.js';
 import { createVault } from './vault.js';
 import { openVaultModal } from './vault-ui.js';
+import { resolveKey, extractKey, saveKey, clearKey, inviteLink } from './trip-key.js';
 
 
-const tripRef = doc(db, 'trips', CONFIG.tripId);
+// 여행 키는 초대 링크(#k=)로만 들어온다. 없으면 init() 이 잠금 화면만 띄우고 Firestore 에는 아무것도 읽거나 쓰지 않는다.
+// (아래 '_nokey' 는 참조 객체를 만들기 위한 자리표시일 뿐, 키가 없을 땐 구독도 쓰기도 일어나지 않는다.)
+const keyStore = {
+  getItem: k => localStorage.getItem(k),
+  setItem: (k, v) => localStorage.setItem(k, v),
+  removeItem: k => localStorage.removeItem(k)
+};
+const TRIP_KEY = resolveKey({ location, history, storage: keyStore }).key;
+
+const tripRef = doc(db, 'trips', TRIP_KEY || '_nokey');
 const poolCol = collection(tripRef, 'pool');
 const itemsCol = collection(tripRef, 'items');
 const flightsCol = collection(tripRef, 'flights');   // 문서 ID 고정: out, in
@@ -1249,7 +1259,7 @@ function renderSettings() {
   renderLodgings(m);
 }
 
-// JSON 내보내기: 해당 tripId 의 trip, pool, items, expenses, members, flights, lodgings 전체.
+// JSON 내보내기: 해당 여행의 trip, pool, items, expenses, members, flights, lodgings 전체.
 // 이동시간과 거리는 저장한 적이 없으므로 포함되지 않는다.
 async function exportJson() {
   try {
@@ -1257,7 +1267,6 @@ async function exportJson() {
     const tripSnap = await getDoc(tripRef);
     const data = {
       exportedAt: new Date().toISOString(),
-      tripId: CONFIG.tripId,
       trip: tripSnap.exists() ? tripSnap.data() : null,
       pool: await all('pool'),
       items: await all('items'),
@@ -1294,6 +1303,50 @@ const vault = createVault({
 
 function openVault() {
   openVaultModal({ h, openSheet, toast, vault, timers: vaultTimers, doc: document, clipboard: navigator.clipboard });
+}
+
+/* ---------- 초대 링크(여행 키) ---------- */
+// 키는 접근 권한 그 자체다: 화면, 로그, 내보내기 파일에 노출하지 않는다. 복사하는 순간에만 링크로 만든다.
+
+// 키가 없을 때: 아무것도 읽거나 쓰지 않고 키 입력 화면만 보여준다(iOS 홈 화면 앱은 사파리와 저장소가 분리돼 있어 직접 입력이 필요할 수 있다).
+function showLocked() {
+  $('main').hidden = true;
+  document.querySelector('.tabbar').hidden = true;
+  $('#locked').hidden = false;
+  $('#locked-form').addEventListener('submit', e => {
+    e.preventDefault();
+    const input = $('#locked-input');
+    const key = extractKey(input.value);
+    input.value = '';
+    if (!key) { $('#locked-msg').textContent = '초대 링크 또는 키 형식이 아니에요'; return; }
+    if (!saveKey(keyStore, key)) location.hash = 'k=' + key; // 저장이 막힌 브라우저: 이번 방문은 주소의 키로 연다
+    location.reload();
+  });
+}
+
+async function copyInvite() {
+  const link = inviteLink(location, TRIP_KEY);
+  try {
+    await navigator.clipboard.writeText(link);
+    toast('초대 링크를 복사했어요');
+  } catch (e) {
+    notice('초대 링크', link); // 복사가 막히면 화면에 보여 줘서 직접 복사하게 한다
+  }
+}
+
+async function forgetKey() {
+  const ok = await choose('이 기기에서 키 지우기', '이 기기에서 이 여행에 들어오는 키를 지워요. 여행 데이터는 지워지지 않고, 다시 들어오려면 초대 링크가 필요해요.',
+    [{ label: '취소', value: false }, { label: '지우기', value: true, kind: 'danger' }]);
+  if (!ok) return;
+  clearKey(keyStore);
+  location.replace(location.pathname); // 주소에서 키를 없애고 잠금 화면으로
+}
+
+function registerServiceWorker() {
+  if ('serviceWorker' in navigator) {
+    // 상대경로: 레포 하위 경로에 배포돼도 이 페이지와 같은 디렉터리의 sw.js 를 등록한다.
+    navigator.serviceWorker.register('sw.js').catch(err => console.error('sw', err));
+  }
 }
 
 /* ---------- 헤더, 탭, 초기화 ---------- */
@@ -1363,6 +1416,8 @@ function init() {
   if (meta) meta.setAttribute('content', CONFIG.themeColor);
   document.title = CONFIG.tripName;
 
+  if (!TRIP_KEY) { showLocked(); registerServiceWorker(); return; }
+
   try { state.day = parseInt(localStorage.getItem('trip.day'), 10) || 1; } catch (e) { state.day = 1; }
   state.manualDays = state.day;
 
@@ -1375,16 +1430,15 @@ function init() {
   $('#export-btn').addEventListener('click', exportJson);
   $('#vault-btn-settings').addEventListener('click', openVault);
   $('#vault-btn-flights').addEventListener('click', openVault);
+  $('#invite-btn').addEventListener('click', copyInvite);
+  $('#forget-key-btn').addEventListener('click', forgetKey);
   document.querySelectorAll('.tabbar button').forEach(b => b.addEventListener('click', () => showTab(b.dataset.tab)));
 
   subscribe();
   showTab('plan');
   if (state.sharedText) openAddSheet({ register: true, text: state.sharedText });
 
-  if ('serviceWorker' in navigator) {
-    // 상대경로: 레포 하위 경로에 배포돼도 이 페이지와 같은 디렉터리의 sw.js 를 등록한다.
-    navigator.serviceWorker.register('sw.js').catch(err => console.error('sw', err));
-  }
+  registerServiceWorker();
 }
 
 init();

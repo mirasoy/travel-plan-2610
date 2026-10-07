@@ -350,7 +350,7 @@ header .sub{font-size:0.82rem;opacity:0.85;margin-bottom:14px;}
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getFirestore, doc, collection, getDoc, setDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-import { CONFIG } from "./trip-app/config.js"; // 여행플래너와 같은 tripId 를 쓴다
+import { resolveKey } from "./trip-app/trip-key.js"; // 여행플래너와 같은 여행 키(초대 링크 #k=)를 쓴다
 
 const firebaseConfig = {
   apiKey: "AIzaSyARuzrDMQb4oMYcJywrMNctXopIHeqCNUA",
@@ -368,7 +368,11 @@ const db = getFirestore(app);
    확정 버튼을 누르면 trips/{tripId}/flights|lodgings 에 바로 쓴다. 여행플래너는 이 문서를 읽어
    일정 화면에 도착/출국/숙소 카드로 자동 표시한다(일정 항목으로 복사하지 않는다).
    아래 상수는 이 페이지 카드(헤더 일정 11/14~11/17, 진에어 LJ171/LJ172)의 값이다. 카드를 바꾸면 같이 고친다. */
-const PLAN_TRIP = CONFIG.tripId;
+// 여행 키는 코드에 두지 않는다. 초대 링크로 들어온 브라우저에만 있고, 없으면 플래너 연동(확정 버튼)은 꺼진다.
+const PLAN_TRIP = resolveKey({
+  location, history,
+  storage: { getItem: k => localStorage.getItem(k), setItem: (k, v) => localStorage.setItem(k, v), removeItem: k => localStorage.removeItem(k) }
+}).key;
 const TRIP_START = '2026-11-14';
 const TRIP_END = '2026-11-17';
 const FLIGHT_DOCS = {
@@ -464,6 +468,15 @@ async function confirmLodging() {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
+  if (!PLAN_TRIP) {
+    document.querySelectorAll('.flight-inner').forEach(inner => {
+      const d = document.createElement('div');
+      d.className = 'confirm-hint';
+      d.textContent = '일정에 확정하려면 초대 링크로 들어와야 해요';
+      inner.appendChild(d);
+    });
+    return; // 키가 없으면 Firestore 에는 아무것도 읽거나 쓰지 않는다
+  }
   const mkBtn = (label, onClick) => {
     const b = document.createElement('button');
     b.type = 'button';

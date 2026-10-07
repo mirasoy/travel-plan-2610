@@ -392,3 +392,9 @@ details.custom summary { min-height: 48px; display: flex; align-items: center; f
 }
 .vault-val.shown { letter-spacing: 0; background: #fff; border-color: var(--theme); }
 .vault-hint { font-size: 12px; color: var(--muted); margin: 16px 0 4px; }
+
+/* 잠금 화면(초대 링크 필요) */
+.locked { max-width: 640px; margin: 0 auto; padding: 8px 16px; }
+.locked-text { margin: 0 0 12px; color: var(--muted); }
+#locked-form .input { margin-bottom: 8px; }
+#locked-msg { min-height: 20px; }

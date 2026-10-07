@@ -1,7 +1,7 @@
 // 앱 셸 캐시. 모든 경로는 서비스워커 위치 기준 상대경로라 레포 하위 경로 배포에서도 깨지지 않는다.
-const CACHE = 'trip-shell-v7';
+const CACHE = 'trip-shell-v8';
 const SHELL = [
-  './', 'index.html', 'style.css', 'app.js', 'parse.js', 'trip-calc.js', 'legs.js', 'config.js', 'firebase.js', 'vault.js', 'vault-ui.js',
+  './', 'index.html', 'style.css', 'app.js', 'parse.js', 'trip-calc.js', 'legs.js', 'config.js', 'firebase.js', 'vault.js', 'vault-ui.js', 'trip-key.js',
   'manifest.json', 'icons/icon-192.png', 'icons/icon-512.png'
 ];
 

@@ -15,6 +15,18 @@
   <div id="trip-sub" class="sub"></div>
 </header>
 
+<section id="locked" class="locked" hidden>
+  <h2 class="section-title">초대 링크가 필요해요</h2>
+  <div class="panel">
+    <p class="locked-text">이 여행은 초대 링크로만 열려요. 받은 링크로 다시 들어오거나, 링크(또는 키)를 아래에 붙여넣어 주세요.</p>
+    <form id="locked-form">
+      <input id="locked-input" class="input" type="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="초대 링크 또는 키">
+      <div id="locked-msg" class="notice" role="alert"></div>
+      <button class="btn primary block" type="submit">열기</button>
+    </form>
+  </div>
+</section>
+
 <main>
   <section id="tab-plan" class="tab">
     <div id="day-tabs" class="day-tabs"></div>
@@ -46,6 +58,12 @@
 
     <h2 id="sec-lodgings" class="section-title">숙소</h2>
     <div id="lodgings-box" class="panel"></div>
+
+    <h2 class="section-title">초대</h2>
+    <div class="panel">
+      <button id="invite-btn" class="btn block" type="button" style="margin-top:0">초대 링크 복사</button>
+      <button id="forget-key-btn" class="btn ghost small block" type="button">이 기기에서 키 지우기</button>
+    </div>
 
     <h2 class="section-title">내 정보</h2>
     <div class="panel">

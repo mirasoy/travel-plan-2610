@@ -29,7 +29,7 @@ test('JSON 내보내기(exportJson)는 금고를 건드리지 않는다', () => 
 
 test('app.js 의 금고 연결부는 localStorage 어댑터 한 곳뿐이고 sessionStorage 를 새로 쓰지 않는다', () => {
   const app = readApp('app.js');
-  const block = app.match(/\/\* ---------- 내 정보\(금고\) ---------- \*\/[\s\S]*?\/\* ---------- 헤더, 탭, 초기화/)[0];
+  const block = app.match(/\/\* ---------- 내 정보\(금고\) ---------- \*\/[\s\S]*?\/\* ---------- 초대 링크\(여행 키\)/)[0];
   assert.ok(!/sessionStorage|indexedDB|caches|console\./.test(block));
   assert.equal((block.match(/localStorage\./g) || []).length, 3, 'getItem, setItem, removeItem 어댑터 3줄만');
   assert.ok(!/vaultToken/.test(app), '키 이름은 vault.js 한 곳에서만 정의한다');
