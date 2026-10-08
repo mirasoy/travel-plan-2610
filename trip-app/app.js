@@ -36,7 +36,8 @@ const state = {
   flights: { out: null, in: null },
   lodgings: [],
   itemsLoaded: false,
-  tab: 'plan',
+  tab: 'summary',
+  prevTab: 'summary',
   poolLoaded: false,
   onPool: null,
   day: 1,
@@ -1006,16 +1007,28 @@ function addItem(fields) {
   renderPlan();
 }
 
-// 저장된 장소 삭제. 일정에 쓰이는 장소는 삭제하지 않는다(카드가 이름을 잃는다).
+// 저장된 장소 삭제. 일정에 쓰이는 장소면 일정에서도 같이 지울지 묻고, 동의하면 장소와 일정을 한 번에(배치) 지운다.
 async function deletePlace(p) {
   if (!state.itemsLoaded) { toast('일정을 불러오는 중. 잠시 후 다시'); return; }
-  const used = [...new Set(state.items.filter(i => i.poolId === p.id).map(i => i.day))].sort((a, b) => a - b);
   const label = p.name || p.rawTitle || '이름 없음';
-  if (used.length) { toast('"' + label + '" 은(는) ' + used.join(', ') + '일차 일정에서 쓰는 중이라 삭제할 수 없어요'); return; }
+  const usedBy = () => state.items.filter(i => i.poolId === p.id);
+  const first = usedBy();
+  if (first.length) {
+    const days = [...new Set(first.map(i => i.day))].sort((a, b) => a - b).join(', ');
+    const c = await choose('장소 삭제', '"' + label + '" 은(는) ' + days + '일차 일정 ' + first.length + '개에서 쓰는 중이야. 일정에서도 같이 삭제할까?',
+      [{ label: '취소', value: 'cancel' }, { label: '일정에서도 삭제', value: 'delete', kind: 'danger' }]);
+    if (c !== 'delete') return;
+  }
+  const items = usedBy(); // 묻는 사이 다른 기기에서 바뀌었을 수 있어 다시 계산
+  state.items = state.items.filter(i => i.poolId !== p.id);
   state.pool = state.pool.filter(x => x.id !== p.id);
-  deleteDoc(doc(poolCol, p.id)).catch(fail('삭제'));
+  const batch = writeBatch(db);
+  items.forEach(i => batch.delete(doc(itemsCol, i.id)));
+  batch.delete(doc(poolCol, p.id));
+  batch.commit().catch(fail('삭제'));
+  renderPlan(); renderSummary();
   if (state.onPool) state.onPool();
-  toast('"' + label + '" 삭제함');
+  toast('"' + label + '" 삭제함' + (items.length ? ' (일정 ' + items.length + '개 포함)' : ''));
 }
 
 // 장소 추가 시트: 목록 화면(저장된 장소 선택)과 등록 화면(한 칸 입력)을 한 시트 안에서 전환한다.
@@ -1617,7 +1630,40 @@ async function importJson(file) {
 
 /* ---------- 요약 탭: 확정된 항공편, 숙소 (Firestore 문서에서 그린다) ---------- */
 
+// 홈 상단: 출발까지 남은 날, 기간, 일차 바로가기. 날짜는 UTC 기준 일 수로만 계산해 시간대와 무관하다.
+function renderHome() {
+  const m = model();
+  const dd = $('#home-dday'), range = $('#home-range'), box = $('#home-days');
+  box.textContent = '';
+  if (!m.valid) {
+    dd.textContent = ''; // 헤더에 같은 제목이 이미 있다
+    range.textContent = '항공편을 입력하면 여행 날짜가 계산돼요';
+  } else {
+    const t = new Date();
+    const today = Date.UTC(t.getFullYear(), t.getMonth(), t.getDate());
+    const left = Math.round((parseYmd(m.range.start) - today) / 86400000);
+    const end = Math.round((parseYmd(m.range.end) - today) / 86400000);
+    dd.textContent = left > 0 ? 'D-' + left : (end >= 0 ? '여행 중' : '다녀왔어요');
+    range.textContent = fmtDate(m.range.start) + ' - ' + fmtDate(m.range.end) + ' · ' + m.dayCount + '일 ' + m.nights + '박';
+  }
+  const total = Math.max(m.dayCount, m.maxItemDay, 1);
+  for (let d = 1; d <= total; d++) {
+    const n = state.items.filter(i => i.day === d).length;
+    const date = m.dateOfDay(d);
+    box.append(h('button', { type: 'button', class: 'home-day', onclick: () => openPlanDay(d) },
+      h('b', null, d + '일차'),
+      h('span', null, (date ? fmtDate(date) + ' · ' : '') + '일정 ' + n + '개')));
+  }
+}
+
+function openPlanDay(d) {
+  state.day = d;
+  try { localStorage.setItem('trip.day', String(d)); } catch (e) { /* 무시 */ }
+  showTab('plan');
+}
+
 function renderSummary() {
+  renderHome();
   const s = buildSummary({ flights: state.flights, lodgings: state.lodgings, extras: CONFIG.lodgingExtras });
   const fill = (sel, cards, emptyText) => {
     const box = $(sel);
@@ -1649,6 +1695,8 @@ function showTab(name) {
   $('#tab-plan').hidden = name !== 'plan';
   $('#tab-summary').hidden = name !== 'summary';
   $('#tab-settings').hidden = name !== 'settings';
+  if (name !== 'settings') state.prevTab = name;
+  $('#settings-btn').setAttribute('aria-pressed', String(name === 'settings'));
   document.querySelectorAll('.tabbar button').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
   if (name === 'plan') { legImmediate = true; renderPlan(); } // 일차 화면을 열 때
   if (name === 'settings') renderSettings();
@@ -1715,12 +1763,15 @@ function init() {
   $('#vault-btn-settings').addEventListener('click', openVault);
   $('#vault-btn-flights').addEventListener('click', openVault);
   $('#vault-btn-summary').addEventListener('click', openVault);
+  $('#home-plan-btn').addEventListener('click', () => showTab('plan'));
+  $('#settings-btn').addEventListener('click', () => showTab(state.tab === 'settings' ? (state.prevTab || 'summary') : 'settings'));
   $('#invite-btn').addEventListener('click', copyInvite);
   $('#forget-key-btn').addEventListener('click', forgetKey);
   document.querySelectorAll('.tabbar button').forEach(b => b.addEventListener('click', () => showTab(b.dataset.tab)));
 
   subscribe();
-  showTab('plan');
+  // 첫 화면은 홈. 다른 앱에서 공유해 들어온 경우만 바로 일정(장소 등록)으로 간다.
+  showTab(state.sharedText ? 'plan' : 'summary');
   if (state.sharedText) openAddSheet({ register: true, text: state.sharedText });
 
   registerServiceWorker();
