@@ -7,6 +7,20 @@ export const CONFIG = {
   resolverUrl: 'https://getgooglemapurl.runaica90.workers.dev',
   // 지도 열기의 마지막 대체 검색어에 붙는 도시(이름 + 도시로 검색).
   destinationCity: '타이베이',
+  // 요약 탭 숙소 카드에 붙는 부가 정보. 공개 저장소에 올라가는 값이다(주소와 링크를 공개해도 된다고 정했음).
+  // id: 이 id 의 숙소 문서에 붙인다(없고 숙소가 하나뿐이면 그 숙소에). 숙소 문서가 하나도 없으면 name, checkIn, checkOut 으로 카드를 대신 만든다.
+  // image 는 이 앱 폴더 안의 사진 경로, mapUrl 은 주소 옆 지도 버튼, airbnbUrl 은 에어비앤비 링크 버튼. 비우면 그 항목은 안 보인다.
+  lodgingExtras: {
+    id: 'stay',
+    name: '시먼딩 에어비앤비',
+    checkIn: '2026-11-14',
+    checkOut: '2026-11-17',
+    image: 'img/stay.jpg',
+    imageAlt: '숙소 거실',
+    address: 'No. 79, Kunming St, Wanhua District, Taipei City, Taiwan 108',
+    mapUrl: 'https://www.google.com/maps/search/?api=1&query=25.042921321383567,121.50483918465575',
+    airbnbUrl: 'https://www.airbnb.co.kr/rooms/1171022019266935445'
+  },
   // 장소 대표 사진(위키미디어) 조회에 보내는 여행지 중심 좌표 "위도,경도"(예: "25.0330,121.5654"). 직접 입력한다.
   // 비우거나 형식이 틀리면 near, radiusKm 없이 이름만 보낸다. 장소의 구글 좌표나 GPS 값은 보내지 않는다.
   destinationCenter: '',
