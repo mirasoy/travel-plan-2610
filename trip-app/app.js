@@ -1124,6 +1124,78 @@ function openAddSheet(opts) {
   }, () => { state.onPool = null; });
 }
 
+// 저장된 장소 목록 관리 시트(일차와 무관). 검색, 수정(이름, 메모), 삭제. 삭제는 일정에서 쓰는 경우 deletePlace 가 확인을 묻는다.
+function openPlacesSheet() {
+  const view = h('div', null);
+  let closeSheet = () => {};
+
+  const showList = () => {
+    view.textContent = '';
+    const filter = h('input', { class: 'input', type: 'search', placeholder: '저장된 장소 검색' });
+    const listBox = h('div', null);
+    const renderList = () => {
+      listBox.textContent = '';
+      const q = filter.value.trim().toLowerCase();
+      const rows = state.pool
+        .filter(p => !q || ((p.name || '') + ' ' + (p.rawTitle || '') + ' ' + (p.memo || '')).toLowerCase().includes(q))
+        .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+      if (!rows.length) listBox.append(h('div', { class: 'empty' }, state.pool.length ? '검색 결과 없음' : '저장된 장소가 없어요. 일정 탭의 장소 추가에서 등록할 수 있어요'));
+      rows.forEach(p => {
+        const cnt = state.items.filter(i => i.poolId === p.id).length;
+        listBox.append(h('div', { class: 'pick-row' },
+          h('div', { class: 'pick static' },
+            p.name || p.rawTitle || '(이름 없음)',
+            h('small', null, (cnt ? '일정 ' + cnt + '회' : '일정에 안 쓰임') + (p.memo ? ' · ' + p.memo : ''))),
+          h('button', { type: 'button', class: 'pick-edit', 'aria-label': '저장된 장소 수정', onclick: () => showEdit(p) }, '수정'),
+          h('button', { type: 'button', class: 'pick-del', 'aria-label': '저장된 장소 삭제', onclick: () => deletePlace(p) }, '삭제')));
+      });
+    };
+    filter.addEventListener('input', renderList);
+    state.onPool = renderList; // 다른 기기나 삭제로 목록이 바뀌면 갱신
+    renderList();
+    view.append(
+      h('h3', null, '저장된 장소 (' + state.pool.length + ')'),
+      filter, h('div', { style: 'height:8px' }), listBox,
+      h('button', { type: 'button', class: 'btn block', onclick: () => closeSheet() }, '닫기'));
+  };
+
+  // 이름을 고치면 이 장소를 쓰는 모든 일정 카드에 반영된다(카드는 장소의 이름을 보여 준다).
+  const showEdit = p => {
+    state.onPool = null;
+    view.textContent = '';
+    const nameIn = h('input', { class: 'input first-input', type: 'text', value: p.name || '', placeholder: '장소 이름' });
+    const memoIn = h('input', { class: 'input', type: 'text', value: p.memo || '', placeholder: '메모 (선택)' });
+    const save = () => {
+      const t = singleLine(nameIn.value);
+      if (!t) { toast('이름을 입력하세요'); nameIn.focus(); return; }
+      const cur = state.pool.find(x => x.id === p.id);
+      if (!cur) { toast('이미 삭제된 장소예요'); showList(); return; }
+      const patch = {};
+      if (t !== cur.name) patch.name = t;
+      const memo = memoIn.value.trim();
+      if (memo !== (cur.memo || '')) patch.memo = memo;
+      if (Object.keys(patch).length) {
+        Object.assign(cur, patch);
+        updateDoc(doc(poolCol, p.id), patch).catch(fail('장소 수정'));
+        if (patch.name) requestPhoto(p.id, t);
+        renderPlan();
+        toast('수정함');
+      }
+      showList();
+    };
+    nameIn.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); save(); } });
+    view.append(
+      h('h3', null, '장소 수정'),
+      nameIn, memoIn,
+      h('div', { class: 'row' },
+        h('button', { type: 'button', class: 'btn', onclick: showList }, '취소'),
+        h('button', { type: 'button', class: 'btn primary', onclick: save }, '저장')));
+    setTimeout(() => nameIn.focus(), 0);
+  };
+
+  closeSheet = openSheet(() => { showList(); return view; }, () => { state.onPool = null; });
+}
+
 function openDatesSheet() {
   const start = h('input', { class: 'input', type: 'date', value: (state.trip && state.trip.startDate) || '' });
   const end = h('input', { class: 'input', type: 'date', value: (state.trip && state.trip.endDate) || '' });
@@ -1758,6 +1830,7 @@ function init() {
   $('#add-item-btn').addEventListener('click', () => openAddSheet());
   $('#dates-btn').addEventListener('click', openDatesSheet);
   $('#route-btn').addEventListener('click', openRouteSheet);
+  $('#places-btn').addEventListener('click', openPlacesSheet);
   $('#export-btn').addEventListener('click', exportJson);
   $('#import-btn').addEventListener('click', pickImportFile);
   $('#vault-btn-settings').addEventListener('click', openVault);

@@ -163,6 +163,12 @@ textarea.input { resize: vertical; }
 }
 .day-tab[aria-selected="true"] { background: var(--text); color: #fff; }
 .day-head { display: flex; align-items: center; justify-content: space-between; }
+.head-actions { display: flex; align-items: center; gap: 8px; }
+.icon-btn {
+  width: 44px; height: 44px; display: flex; align-items: center; justify-content: center;
+  border: 1px solid var(--line); border-radius: 50%; background: var(--card); color: var(--text);
+}
+.pick-edit { flex: 0 0 auto; border: 0; background: none; color: var(--text); font: inherit; font-size: 13px; padding: 0 10px; }
 .day-head .section-title { font-size: 22px; font-weight: 800; color: var(--text); margin: 12px 4px 8px; letter-spacing: -0.02em; }
 
 /* 일정 카드 + 드래그 핸들 */
