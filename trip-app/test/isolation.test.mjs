@@ -43,3 +43,21 @@ test('Worker 코드는 레포에 두지 않는다: worker/ 폴더 없음, .gitig
   const readme = readApp('README.md');
   assert.ok(!/```/.test(readme.split('## Worker 사용 계약')[1] || ''), 'README 의 Worker 계약 절에는 코드 블록을 넣지 않는다');
 });
+
+test('위키 사진 조회는 장소 저장/이름 변경 지점에서만 시작된다(목록을 열 때마다 부르지 않는다)', () => {
+  const app = readApp('app.js');
+  assert.equal((app.match(/\bwiki\.lookup\(/g) || []).length, 1, 'lookup 호출은 requestPhoto 안의 한 곳');
+  assert.equal((app.match(/\brequestPhoto\(/g) || []).length, 4, '정의 1 + 호출 3(새 장소 저장, 이름 정해짐, 이름 수정)');
+  const fn = name => { const m = app.match(new RegExp('^(?:async )?function ' + name + '\\([\\s\\S]*?^\\}', 'm')); assert.ok(m, name + ' 를 찾지 못함'); return m[0]; };
+  assert.equal((fn('registerAndAdd').match(/requestPhoto\(/g) || []).length, 2);
+  // 이름 수정 저장 핸들러(itemCard 안): 이름을 실제로 바꾸는 쓰기 바로 뒤의 한 곳만
+  const card = fn('itemCard');
+  assert.equal((card.match(/requestPhoto\(/g) || []).length, 1);
+  assert.match(card, /updateDoc\(doc\(poolCol, p\.id\), \{ name: t \}\)[^\n]*\n\s*requestPhoto\(p\.id, t\);/, '이름이 실제로 바뀔 때만 호출');
+  assert.ok(!/wiki\./.test(card));
+  for (const name of ['renderPlanBody', 'renderPlan', 'renderSettings', 'renderSummary', 'showTab', 'renderAll', 'subscribe', 'init']) {
+    assert.ok(!/requestPhoto|wiki\./.test(fn(name)), name + ' 에서 사진 조회를 시작하면 안 된다');
+  }
+  const photoWrites = app.match(/photo[^\n]*updateDoc|updateDoc[^\n]*photo|setDoc[^\n]*photo/g) || [];
+  assert.ok(photoWrites.every(l => !/base64|dataUrl|toDataURL/.test(l)));
+});

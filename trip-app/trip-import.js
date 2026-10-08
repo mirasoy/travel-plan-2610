@@ -3,6 +3,8 @@
 // 쓰는 것: 이 앱이 내보낸 컬렉션(pool, items, expenses, members, flights, lodgings)과 여행 문서의 일부 필드뿐.
 // 같은 ID 의 문서는 가져온 필드만 바뀌고(merge) 나머지 필드는 유지되며, 파일에 없는 문서는 건드리지 않고, 아무것도 삭제하지 않는다.
 
+import { sanitizeStoredPhoto } from './wiki.js';
+
 export const COLLECTIONS = ['pool', 'items', 'expenses', 'members', 'flights', 'lodgings'];
 export const LABELS = { pool: '장소', items: '일정', expenses: '경비', members: '멤버', flights: '항공편', lodgings: '숙소' };
 export const LIMITS = { fileBytes: 5 * 1024 * 1024, docs: 3000, docBytes: 900 * 1024, depth: 20 };
@@ -95,6 +97,11 @@ export function sanitizeDoc(raw, col) {
     for (const k of Object.keys(types)) {
       if (k in data && !typeOk(data[k], types[k])) { delete data[k]; sanitized = true; }
     }
+  }
+  // 장소 사진(위키미디어 메타데이터): 검증을 통과한 것만 남긴다(출처, URL 호스트, 평문 정리, 이미지 데이터 금지).
+  if (col === 'pool' && 'photo' in data) {
+    const photo = sanitizeStoredPhoto(data.photo);
+    if (photo === null) { delete data.photo; sanitized = true; } else data.photo = photo;
   }
   // 카드용 부가 필드: 형식이 틀리면 그 필드만 버린다(문서는 살린다).
   if ('details' in data) {

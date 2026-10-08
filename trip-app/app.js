@@ -10,6 +10,8 @@ import { openVaultModal } from './vault-ui.js';
 import { resolveKey, extractKey, saveKey, clearKey, inviteLink } from './trip-key.js';
 import { parseExport, summarize, chunk, COLLECTIONS, LIMITS, BATCH_SIZE } from './trip-import.js';
 import { buildSummary, renderCard } from './trip-summary.js';
+import { createSwipe, OPEN_PX } from './swipe.js';
+import { createWiki, renderPhoto, hasVisiblePhoto, shouldLookup } from './wiki.js';
 
 
 // 여행 키는 초대 링크(#k=)로만 들어온다. 없으면 init() 이 잠금 화면만 띄우고 Firestore 에는 아무것도 읽거나 쓰지 않는다.
@@ -43,7 +45,8 @@ const state = {
   editingPoolId: null,
   editingItemId: null,
   focusEdit: false,
-  dragging: false
+  dragging: false,
+  swipeOpenId: null   // 삭제 버튼이 드러나 있는 카드(다시 그려도 열린 채 유지)
 };
 
 /* ---------- 유틸 ---------- */
@@ -270,7 +273,7 @@ async function registerAndAdd(text, pending, nameOverride) {
   const dup = findDuplicate(d);
   if (dup) {
     poolId = dup.id;
-    if (!dup.name) { dup.name = name; updateDoc(doc(poolCol, dup.id), { name }).catch(fail('이름 저장')); }
+    if (!dup.name) { dup.name = name; updateDoc(doc(poolCol, dup.id), { name }).catch(fail('이름 저장')); requestPhoto(dup.id, name); }
   } else {
     const ref = doc(poolCol);
     const data = {
@@ -281,6 +284,7 @@ async function registerAndAdd(text, pending, nameOverride) {
     // 스냅샷은 state.pool 을 통째로 교체하므로 낙관적 반영을 쓰기 호출보다 먼저 한다.
     state.pool.push({ id: ref.id, ...data });
     setDoc(ref, data).catch(fail('저장')); // 오프라인 대기 방지: await 하지 않는다
+    requestPhoto(ref.id, name);            // 사진은 저장이 끝난 뒤 따로 조회한다(기다리지 않는다)
     poolId = ref.id;
   }
   addItem({ poolId, title: name });
@@ -352,7 +356,7 @@ function itemTitle(it) {
   return (p && p.name) || it.title || '(이름 없음)';
 }
 
-function renderPlan() {
+function renderPlanBody() {
   if (state.dragging) return; // 드래그 중에는 갱신하지 않는다(드롭 때 다시 그림)
   const m = model();
   const total = Math.max(m.dayCount, m.maxItemDay, state.manualDays, 1);
@@ -425,6 +429,11 @@ function renderPlan() {
   }
 
   if (slots.some(s => s.pair) && legs.missing(slots.filter(s => s.pair).map(s => s.pair)).length) scheduleLegs();
+}
+
+function renderPlan() {
+  renderPlanBody();
+  reanchorMenu();
 }
 
 function goSettings(target) {
@@ -555,6 +564,175 @@ function openRouteSheet() {
   });
 }
 
+/* ---------- 장소 대표 사진(위키미디어) ---------- */
+// 새 장소를 저장할 때와, 이름이 정해지거나 바뀔 때만 Worker /wiki 를 한 번 부른다(목록을 열 때마다 부르지 않는다).
+// 저장은 응답을 기다리지 않는다. 찾으면 확인 없이 장소 문서의 photo 에 반영하고, 못 찾거나 실패하면 아무것도 하지 않는다(조용히).
+// 같은 이름으로는 다시 부르지 않고, 사용자가 숨긴 사진은 다시 적용하지 않는다. 구글 사진은 어디에도 저장하지 않는다.
+const wikiTimers = { setTimeout: (fn, ms) => setTimeout(fn, ms), clearTimeout: id => clearTimeout(id) };
+const wiki = createWiki({
+  getBaseUrl: () => CONFIG.resolverUrl,
+  getCenter: () => CONFIG.destinationCenter,
+  getRadiusKm: () => CONFIG.wikiRadiusKm,
+  fetchFn: (url, init) => fetch(url, init),
+  timers: wikiTimers,
+  now: () => Date.now()
+});
+const wikiTried = new Map(); // 장소 ID -> 마지막으로 조회한 이름(같은 이름 중복 호출 방지)
+
+function requestPhoto(poolId, name) {
+  if (!CONFIG.resolverUrl) return;
+  const p = state.pool.find(x => x.id === poolId);
+  const nm = shouldLookup(wikiTried, poolId, singleLine(name), p && p.photo);   // 빈 이름, 숨긴 사진, 같은 이름 중복 호출을 막는다
+  if (!nm) return;
+  wiki.lookup(nm).then(r => {
+    if (!r.ok) return;
+    const cur = state.pool.find(x => x.id === poolId);
+    if (!cur || singleLine(cur.name) !== nm) return;      // 그 사이 삭제됐거나 이름이 또 바뀜
+    if (cur.photo && cur.photo.hidden === true) return;
+    cur.photo = r.photo;
+    updateDoc(doc(poolCol, poolId), { photo: r.photo }).catch(() => { /* 사진은 부가 정보라 조용히 넘어간다 */ });
+    renderPlan();
+  });
+}
+
+// 카드 메뉴의 "사진 숨기기"(선택 기능). 숨기면 photo.hidden = true 로 저장하고 다시 자동 적용하지 않는다. 실행취소로 되돌릴 수 있다.
+function hidePhoto(poolId) {
+  const p = state.pool.find(x => x.id === poolId);
+  if (!p || !p.photo) return;
+  const setHidden = v => {
+    const cur = state.pool.find(x => x.id === poolId);
+    if (cur && cur.photo) cur.photo = Object.assign({}, cur.photo, { hidden: v });
+    updateDoc(doc(poolCol, poolId), { 'photo.hidden': v }).catch(fail(v ? '사진 숨기기' : '사진 되살리기'));
+    renderPlan();
+  };
+  setHidden(true);
+  toast('사진을 숨겼어요', { label: '실행취소', onclick: () => setHidden(false) });
+}
+
+/* ---------- 카드 스와이프(삭제 버튼)와 더보기 메뉴 ---------- */
+
+// 카드를 열면(삭제 버튼 노출) 다른 열린 카드는 닫는다. 열림 상태는 다시 그려도 유지된다(state.swipeOpenId).
+function setCardOpen(li, id, open, opt) {
+  const body = li.querySelector('.swipe-body'), del = li.querySelector('.swipe-del');
+  if (!body || !del) return;
+  if (open) {
+    document.querySelectorAll('#day-items li.item.open').forEach(o => { if (o !== li) setCardOpen(o, o.dataset.id, false); });
+    state.swipeOpenId = id;
+  } else if (state.swipeOpenId === id) {
+    state.swipeOpenId = null;
+  }
+  li.classList.toggle('open', open);
+  body.style.transform = open ? 'translateX(' + (-OPEN_PX) + 'px)' : '';
+  del.tabIndex = open ? 0 : -1;
+  del.setAttribute('aria-hidden', open ? 'false' : 'true');
+  if (open && opt && opt.focus) del.focus();
+}
+
+// 포인터(터치, 마우스) 스와이프. 판정은 swipe.js(순수 함수). 순서 핸들에서 시작한 입력은 건드리지 않는다.
+function attachSwipe(li, body, it) {
+  const sw = createSwipe();
+  let tracking = false, pid = null, engaged = false, swallowClick = false;
+  body.addEventListener('pointerdown', e => {
+    if ((e.button !== undefined && e.button !== 0) || state.dragging || e.target.closest('.handle')) return;
+    sw.start(e.clientX, e.clientY, e.timeStamp, li.classList.contains('open'));
+    tracking = true; engaged = false; pid = e.pointerId;
+  });
+  body.addEventListener('pointermove', e => {
+    if (!tracking || e.pointerId !== pid) return;
+    const r = sw.move(e.clientX, e.clientY, e.timeStamp);
+    if (!r) return;
+    if (r.lock === 'y') { tracking = false; sw.cancel(); return; }  // 세로 스크롤은 브라우저에 맡긴다
+    if (r.lock === 'x') {
+      if (!engaged) { engaged = true; li.classList.add('swiping'); try { body.setPointerCapture(e.pointerId); } catch (err) { /* 무시 */ } }
+      body.style.transform = 'translateX(' + r.offset + 'px)';
+    }
+  });
+  const finish = e => {
+    if (!tracking || e.pointerId !== pid) return;
+    tracking = false;
+    const r = sw.end();
+    li.classList.remove('swiping');
+    if (!r.swiped) return;
+    setCardOpen(li, it.id, r.open);
+    // 마우스는 밀고 놓은 자리에서 click 이 한 번 더 발생한다(터치는 안 생김). 그 click 이 방금 연 카드를 닫거나
+    // 지도 링크, 더보기를 누르지 않게 삼킨다. 같은 click 핸들러가 플래그로 처리한다(별도 리스너는 실행 순서 때문에 늦다).
+    swallowClick = true;
+    setTimeout(() => { swallowClick = false; }, 60);
+  };
+  body.addEventListener('pointerup', finish);
+  body.addEventListener('pointercancel', finish);
+  // 열린 카드의 본문을 탭하면 닫기만 한다(수정, 지도 등이 실수로 눌리지 않게).
+  body.addEventListener('click', e => {
+    if (swallowClick) { swallowClick = false; e.preventDefault(); e.stopPropagation(); return; }
+    if (li.classList.contains('open')) { e.preventDefault(); e.stopPropagation(); setCardOpen(li, it.id, false); }
+  }, true);
+}
+
+// 더보기(⋯) 메뉴: 화면 고정 위치의 작은 팝업. 바깥 탭, Esc, 스크롤, 크기 변경으로 닫히고, 다시 그려져도 같은 카드 옆에 유지된다.
+let openMenu = null; // { node, anchor, itemId, off }
+
+function placeMenu(node, anchor) {
+  const r = anchor.getBoundingClientRect();
+  const mw = node.offsetWidth, mh = node.offsetHeight;
+  const left = Math.min(Math.max(8, r.right - mw), window.innerWidth - mw - 8);
+  let top = r.bottom + 6;
+  if (top + mh > window.innerHeight - 8) top = Math.max(8, r.top - mh - 6); // 아래가 모자라면 위로
+  node.style.left = left + 'px';
+  node.style.top = top + 'px';
+}
+
+function closeMenu(refocus) {
+  if (!openMenu) return;
+  const m = openMenu;
+  openMenu = null;
+  m.off();
+  m.node.remove();
+  m.anchor.setAttribute('aria-expanded', 'false');
+  if (refocus && m.anchor.isConnected) m.anchor.focus();
+}
+
+function openItemMenu(anchor, itemId, entries) {
+  if (openMenu && openMenu.anchor === anchor) { closeMenu(); return; }
+  closeMenu();
+  const node = h('div', { class: 'menu', role: 'menu', 'aria-label': '일정 메뉴' },
+    entries.map(en => h('button', { type: 'button', class: 'menu-item', role: 'menuitem', onclick: () => { closeMenu(); en.run(); } }, en.label)));
+  document.body.append(node);
+  placeMenu(node, anchor);
+  anchor.setAttribute('aria-expanded', 'true');
+  const onDown = e => { if (!node.contains(e.target) && !openMenu.anchor.contains(e.target)) closeMenu(); };
+  const onKey = e => {
+    if (e.key === 'Escape') { e.preventDefault(); closeMenu(true); return; }
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      const items = [...node.querySelectorAll('.menu-item')];
+      const i = items.indexOf(document.activeElement);
+      items[(i + (e.key === 'ArrowDown' ? 1 : items.length - 1)) % items.length].focus();
+    }
+  };
+  const onScroll = () => closeMenu();
+  document.addEventListener('pointerdown', onDown, true);
+  document.addEventListener('keydown', onKey, true);
+  window.addEventListener('scroll', onScroll, true);
+  window.addEventListener('resize', onScroll);
+  openMenu = { node, anchor, itemId, off: () => {
+    document.removeEventListener('pointerdown', onDown, true);
+    document.removeEventListener('keydown', onKey, true);
+    window.removeEventListener('scroll', onScroll, true);
+    window.removeEventListener('resize', onScroll);
+  } };
+  node.querySelector('.menu-item').focus();
+}
+
+// 목록이 다시 그려져 앵커가 새 노드가 되면 메뉴를 새 위치에 붙인다(앵커가 없어졌으면 닫는다).
+function reanchorMenu() {
+  if (!openMenu) return;
+  const a = document.querySelector('#day-items li[data-id="' + CSS.escape(openMenu.itemId) + '"] .kebab');
+  if (!a) { closeMenu(); return; }
+  openMenu.anchor = a;
+  a.setAttribute('aria-expanded', 'true');
+  placeMenu(openMenu.node, a);
+}
+
 function itemCard(it, idx, n) {
   const p = poolOf(it);
   const card = h('li', { class: 'card', 'data-id': it.id });
@@ -572,6 +750,7 @@ function itemCard(it, idx, n) {
         if (t !== p.name) {
           p.name = t;
           updateDoc(doc(poolCol, p.id), { name: t }).catch(fail('이름 수정'));
+          requestPhoto(p.id, t);
         }
         patch.title = t;
       } else {
@@ -594,11 +773,13 @@ function itemCard(it, idx, n) {
 
   card.classList.add('item');
   const handle = h('button', {
-    type: 'button', class: 'handle', 'aria-label': '순서 이동 (드래그, 또는 위/아래 방향키)',
+    type: 'button', class: 'handle', 'aria-label': '순서 이동 (드래그, 또는 위/아래 방향키). 왼쪽 방향키로 삭제 버튼 열기',
     onpointerdown: e => startDrag(e, it, card),
     onkeydown: e => {
       if (e.key === 'ArrowUp') { e.preventDefault(); moveItem(it, -1); focusHandle(it.id); }
       else if (e.key === 'ArrowDown') { e.preventDefault(); moveItem(it, 1); focusHandle(it.id); }
+      else if (e.key === 'ArrowLeft') { e.preventDefault(); setCardOpen(card, it.id, true, { focus: true }); }
+      else if (e.key === 'ArrowRight' || e.key === 'Escape') { e.preventDefault(); setCardOpen(card, it.id, false); handle.focus(); }
     }
   });
   handle.innerHTML = '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><circle cx="5" cy="3" r="1.4"/><circle cx="11" cy="3" r="1.4"/><circle cx="5" cy="8" r="1.4"/><circle cx="11" cy="8" r="1.4"/><circle cx="5" cy="13" r="1.4"/><circle cx="11" cy="13" r="1.4"/></svg>';
@@ -607,13 +788,32 @@ function itemCard(it, idx, n) {
       h('span', { class: 'item-time' }, it.time || '--:--'),
       h('span', { class: 'item-title' }, itemTitle(it))));
   if (it.memo) main.append(h('div', { class: 'memo' }, it.memo));
-  main.append(h('div', { class: 'item-actions' },
-    h('button', { type: 'button', class: 'btn', onclick: () => { state.editingItemId = it.id; state.focusEdit = true; renderPlan(); } }, '수정'),
-    p && mapOpenUrl(p, CONFIG.destinationCity)
-      ? h('a', { class: 'btn', href: mapOpenUrl(p, CONFIG.destinationCity), target: '_blank', rel: 'noopener' }, '지도') : null,
-    h('button', { type: 'button', class: 'btn', onclick: () => openMoveDaySheet(it) }, '일차 이동'),
-    h('button', { type: 'button', class: 'btn danger', onclick: () => removeItem(it) }, '삭제')));
-  card.append(handle, main);
+  const photoNode = p ? renderPhoto(h, p.photo) : null;   // 위키미디어 대표 사진(있을 때만). 본문 줄 아래에 카드 폭으로 붙인다
+
+  // 오른쪽 도구: 지도 아이콘(링크가 있을 때만), 더보기(수정, 일차 이동). 삭제는 카드를 왼쪽으로 밀어서 한다.
+  const mapHref = p ? mapOpenUrl(p, CONFIG.destinationCity) : '';
+  const menuEntries = [
+    { label: '수정', run: () => { state.editingItemId = it.id; state.focusEdit = true; renderPlan(); } },
+    { label: '일차 이동', run: () => openMoveDaySheet(it) }
+  ];
+  if (p && hasVisiblePhoto(p.photo)) menuEntries.push({ label: '사진 숨기기', run: () => hidePhoto(p.id) }); // 선택 기능
+  const tools = h('div', { class: 'item-tools' },
+    mapHref ? h('a', { class: 'icon-btn map-btn', href: mapHref, target: '_blank', rel: 'noopener', 'aria-label': '지도 열기', title: '지도' },
+      h('img', { src: 'icons/map.png', alt: '', width: '26', height: '26', draggable: 'false' })) : null,
+    h('button', {
+      type: 'button', class: 'icon-btn kebab', 'aria-label': '더보기', 'aria-haspopup': 'menu', 'aria-expanded': 'false',
+      onclick: e => openItemMenu(e.currentTarget, it.id, menuEntries)
+    }));
+  tools.querySelector('.kebab').innerHTML = '<svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><circle cx="4" cy="10" r="1.8"/><circle cx="10" cy="10" r="1.8"/><circle cx="16" cy="10" r="1.8"/></svg>';
+
+  const body = h('div', { class: 'swipe-body' }, handle, main, tools, photoNode);
+  const del = h('button', {
+    type: 'button', class: 'swipe-del', tabindex: '-1', 'aria-hidden': 'true',
+    onclick: () => { setCardOpen(card, it.id, false); removeItem(it); }
+  }, '삭제');
+  card.append(del, body);
+  attachSwipe(card, body, it);
+  if (state.swipeOpenId === it.id) setCardOpen(card, it.id, true);
   return card;
 }
 
