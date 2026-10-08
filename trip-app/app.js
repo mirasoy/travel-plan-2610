@@ -1618,7 +1618,7 @@ async function importJson(file) {
 /* ---------- 요약 탭: 확정된 항공편, 숙소 (Firestore 문서에서 그린다) ---------- */
 
 function renderSummary() {
-  const s = buildSummary({ flights: state.flights, lodgings: state.lodgings });
+  const s = buildSummary({ flights: state.flights, lodgings: state.lodgings, extras: CONFIG.lodgingExtras });
   const fill = (sel, cards, emptyText) => {
     const box = $(sel);
     box.textContent = '';

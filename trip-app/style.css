@@ -449,4 +449,11 @@ details.custom summary { min-height: 48px; display: flex; align-items: center; f
 .sum-rows dt { font-size: 13px; color: var(--muted); font-weight: 600; }
 .sum-rows dd { margin: 0; font-size: 14px; word-break: break-word; }
 .sum-note { margin-top: 12px; padding: 10px 12px; font-size: 13px; background: var(--soft); border-radius: 10px; white-space: pre-line; word-break: break-word; }
-.sum-card .btn { margin-top: 12px; }
+.sum-photo { margin: 0 0 12px; }
+.sum-photo img { display: block; width: 100%; max-height: 220px; object-fit: cover; border-radius: 12px; background: var(--soft); }
+.sum-rows dd .mini-btn {
+  display: inline-block; margin-left: 6px; padding: 2px 10px; border-radius: 999px; vertical-align: 1px;
+  font-size: 12px; font-weight: 700; color: var(--theme); background: color-mix(in srgb, var(--theme) 10%, transparent); text-decoration: none;
+}
+.sum-links { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.sum-links .btn { flex: 1 1 140px; margin-top: 0; text-align: center; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; }

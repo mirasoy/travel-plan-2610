@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildSummary, flightTime, mdw, renderCard } from '../trip-summary.js';
+import { buildSummary, flightTime, mdw, renderCard, normalizeExtras } from '../trip-summary.js';
 import { cleanRows, cleanLink, parseExport, sanitizeDoc, ROW_LIMITS } from '../trip-import.js';
 import { readApp, FakeDocument, FakeElement, loadAppHelpers, walk, byTag, byClass } from './helpers.mjs';
 
@@ -23,7 +23,7 @@ test('항공 카드: 가는 편/오는 편 순서, 제목, 경로, 시간, 메�
   assert.deepEqual(s.flights.map(c => c.id), ['out', 'in'], '문서 순서와 상관없이 가는 편이 먼저');
   assert.deepEqual(s.flights[0], {
     id: 'out', title: '가는 편 · XX1', main: 'ICN → TPE', sub: '2/3(목) 09:35 → 11:30',
-    rows: [{ label: '항공사', value: 'FAKE항공' }], note: '메모', link: null
+    rows: [{ label: '항공사', value: 'FAKE항공' }], note: '메모', link: null, image: null, links: []
   });
   assert.equal(s.flights[1].rows.length, 0);
 });
@@ -124,8 +124,93 @@ test('카드 렌더링(app.js 의 실제 h 사용): 행이 dt/dd 쌍으로 그�
   let injected = 0; walk(node, n => { if (n.nodeType === 1 && n.tagName === 'IMG') injected += 1; });
   assert.equal(injected, 0, 'HTML 은 요소가 되지 않는다');
   const a = byTag(node, 'a')[0];
-  assert.deepEqual([a.attrs.href, a.attrs.target, a.attrs.rel, a.textContent], ['https://maps.app.goo.gl/x', '_blank', 'noopener', '지도']);
+  assert.deepEqual([a.attrs.href, a.attrs.target, a.attrs.rel, a.textContent], ['https://maps.app.goo.gl/x', '_blank', 'noopener noreferrer', '지도']);
   assert.deepEqual(byClass(node, 'sum-title').map(n => n.textContent), ['가는 편 · XX1']);
   const bare = renderCard(h, buildSummary({ flights: { in: { id: 'in' } }, lodgings: [] }).flights[0]);
   assert.equal(byTag(bare, 'dl').length + byTag(bare, 'a').length, 0, '비어 있으면 행/링크 요소를 만들지 않는다');
+});
+
+const EX = { id: 'stay', name: '시먼딩 에어비앤비', checkIn: '2026-11-14', checkOut: '2026-11-17', image: 'img/stay.jpg', imageAlt: '숙소 거실',
+  address: 'No. 1, FAKE St, Taipei', mapUrl: 'https://www.google.com/maps/search/?api=1&query=25.0,121.5', airbnbUrl: 'https://www.airbnb.co.kr/rooms/123' };
+const STAY = { id: 'stay', name: '문서 이름', checkIn: '2026-11-14', checkOut: '2026-11-17', details: [{ label: '요금', value: 'FAKE' }], link: { label: '거리 기준 지도', url: 'https://www.google.com/maps/search/?api=1&query=Street' } };
+
+test('숙소 부가 정보 검증: 이미지는 앱 폴더 안 상대 경로만, 링크는 https 만, 형식이 틀린 항목만 버린다', () => {
+  assert.deepEqual(normalizeExtras(EX), { ...EX });
+  for (const ok of ['img/stay.jpg', 'a/b-c_d.PNG', 'x.webp', 'deep/er/path/p.jpeg']) assert.equal(normalizeExtras({ image: ok }).image, ok, ok);
+  for (const bad of ['../x.jpg', 'img/../../x.jpg', '/etc/x.jpg', 'https://evil.example/x.jpg', 'x.svg', 'x.jpg.exe', 'a b.jpg', 'x.jpg?x=1', 'javascript:alert(1)', '', null, 5, 'a'.repeat(120) + '.jpg']) {
+    assert.equal(normalizeExtras({ image: bad, address: 'a' }).image, '', '거부: ' + String(bad).slice(0, 30));
+  }
+  for (const bad of ['javascript:alert(1)', 'http://www.airbnb.co.kr/rooms/1', 'data:text/html,x', 'https://user:pw@x.example/', '', null, 5, 'not a url', 'https://x.example/' + 'a'.repeat(700)]) {
+    const e = normalizeExtras({ address: 'a', mapUrl: bad, airbnbUrl: bad });
+    assert.deepEqual([e.mapUrl, e.airbnbUrl], ['', ''], '거부: ' + String(bad).slice(0, 30));
+  }
+  for (const empty of [null, undefined, 'x', [], {}, { image: 'bad.svg' }, { name: 'only name' }]) assert.equal(normalizeExtras(empty), null);
+});
+
+test('buildSummary + extras: id 가 같은 숙소 문서에 붙고, 문서의 거리 기준 링크는 중복이라 숨긴다', () => {
+  const c = buildSummary({ flights: {}, lodgings: [STAY], extras: EX }).lodgings[0];
+  assert.equal(c.title, '문서 이름', '제목과 날짜는 문서가 우선');
+  assert.deepEqual(c.image, { src: 'img/stay.jpg', alt: '숙소 거실' });
+  assert.deepEqual(c.rows[0], { label: '주소', value: 'No. 1, FAKE St, Taipei', action: { label: '지도', url: EX.mapUrl } }, '주소 행이 맨 위, 지도 버튼 포함');
+  assert.deepEqual(c.rows[1], { label: '요금', value: 'FAKE' }, '문서의 기존 행은 그대로 뒤에');
+  assert.deepEqual(c.links, [{ label: '에어비앤비에서 보기', url: EX.airbnbUrl }]);
+  assert.equal(c.link, null);
+  // 이미지만 주는 extras 면 문서의 링크는 유지
+  const only = buildSummary({ flights: {}, lodgings: [STAY], extras: { id: 'stay', image: 'img/stay.jpg' } }).lodgings[0];
+  assert.deepEqual([!!only.image, only.link && only.link.label, only.rows.length], [true, '거리 기준 지도', 1]);
+});
+
+test('buildSummary + extras: id 가 안 맞아도 숙소가 하나뿐이면 붙고, 여럿이면 붙이지 않는다', () => {
+  const one = buildSummary({ flights: {}, lodgings: [{ ...STAY, id: 'auto123' }], extras: EX }).lodgings;
+  assert.equal(one.length, 1); assert.ok(one[0].image && one[0].rows[0].label === '주소');
+  const many = buildSummary({ flights: {}, lodgings: [{ ...STAY, id: 'a' }, { ...STAY, id: 'b', checkIn: '2026-11-20', checkOut: '2026-11-21' }], extras: EX }).lodgings;
+  assert.equal(many.length, 2); assert.ok(many.every(c => !c.image && c.rows.length === 1), '모호하면 어디에도 붙이지 않는다');
+  const hit = buildSummary({ flights: {}, lodgings: [{ ...STAY, id: 'a' }, { ...STAY, id: 'stay', checkIn: '2026-11-20', checkOut: '2026-11-21' }], extras: EX }).lodgings;
+  assert.deepEqual(hit.map(c => !!c.image), [false, true], 'id 가 맞는 쪽에만 붙는다(정렬 뒤의 카드)');
+});
+
+test('buildSummary + extras: 숙소 문서가 하나도 없으면 extras 의 name, 날짜로 카드를 대신 만든다(name 이 없으면 만들지 않는다)', () => {
+  const c = buildSummary({ flights: {}, lodgings: [], extras: EX }).lodgings;
+  assert.equal(c.length, 1);
+  assert.deepEqual([c[0].title, c[0].main, !!c[0].image, c[0].rows[0].label, c[0].links.length], ['시먼딩 에어비앤비', '11/14(토) ~ 11/17(화) · 3박', true, '주소', 1]);
+  assert.equal(buildSummary({ flights: {}, lodgings: [], extras: { ...EX, name: '' } }).lodgings.length, 0);
+  assert.equal(buildSummary({ flights: {}, lodgings: null, extras: null }).lodgings.length, 0, 'extras 가 없으면 기존 동작');
+});
+
+test('카드 렌더링: 맨 위 이미지, 주소 옆 지도 버튼, 에어비앤비 링크 버튼(새 탭, noopener noreferrer), 이미지 실패 시 사진 영역만 숨김', () => {
+  const doc = new FakeDocument();
+  const { h } = loadAppHelpers(doc, new FakeElement('div'));
+  const card = buildSummary({ flights: {}, lodgings: [STAY], extras: EX }).lodgings[0];
+  const node = renderCard(h, card);
+  assert.equal(node.children[0].className, 'sum-photo', '이미지가 카드 맨 위');
+  const img = byTag(node, 'img')[0];
+  assert.deepEqual([img.attrs.src, img.attrs.alt, img.attrs.loading], ['img/stay.jpg', '숙소 거실', 'lazy']);
+  const dl = byTag(node, 'dl')[0];
+  assert.deepEqual(dl.children.map(c => c.tagName), ['DT', 'DD', 'DT', 'DD']);
+  const addrDd = dl.children[1];
+  assert.equal(addrDd.textContent, 'No. 1, FAKE St, Taipei 지도');
+  const mini = byTag(addrDd, 'a')[0];
+  assert.deepEqual([mini.className, mini.textContent, mini.attrs.href, mini.attrs.target, mini.attrs.rel], ['mini-btn', '지도', EX.mapUrl, '_blank', 'noopener noreferrer']);
+  const links = byTag(byClass(node, 'sum-links')[0], 'a');
+  assert.deepEqual(links.map(a => [a.textContent, a.attrs.href, a.attrs.target, a.attrs.rel]), [['에어비앤비에서 보기', EX.airbnbUrl, '_blank', 'noopener noreferrer']]);
+  assert.equal(byTag(node, 'a').length, 2, '거리 기준 옛 링크는 없다');
+  img.dispatch('error');
+  assert.equal(node.children[0].hidden, true, '이미지 로드 실패: 사진 영역만 숨김');
+  assert.equal(byClass(node, 'sum-title')[0].textContent, '문서 이름', '나머지 카드는 그대로');
+  // extras 가 없는 카드는 기존 그대로(옛 단일 링크 버튼 유지, 이미지 없음)
+  const plain = renderCard(h, buildSummary({ flights: {}, lodgings: [STAY] }).lodgings[0]);
+  assert.equal(byClass(plain, 'sum-photo').length, 0);
+  assert.deepEqual(byTag(byClass(plain, 'sum-links')[0], 'a').map(a => a.textContent), ['거리 기준 지도']);
+});
+
+test('extras 가 위조된 값이어도 위험한 링크/이미지는 화면에 만들어지지 않는다', () => {
+  const doc = new FakeDocument();
+  const { h } = loadAppHelpers(doc, new FakeElement('div'));
+  const evil = { id: 'stay', image: 'https://evil.example/x.jpg', address: '<img src=x onerror=alert(1)>', mapUrl: 'javascript:alert(1)', airbnbUrl: 'http://evil.example' };
+  const node = renderCard(h, buildSummary({ flights: {}, lodgings: [STAY], extras: evil }).lodgings[0]);
+  assert.equal(byTag(node, 'img').length, 0, '외부 이미지/잘못된 경로는 그리지 않는다');
+  assert.ok(!byTag(node, 'a').some(a => /javascript:|evil/.test(a.attrs.href)), '위험한 링크 없음');
+  const addr = byTag(node, 'dd')[0];
+  assert.equal(addr.textContent, '<img src=x onerror=alert(1)>', '주소는 textContent 라 글자 그대로');
+  assert.equal(byTag(addr, 'img').length, 0);
 });

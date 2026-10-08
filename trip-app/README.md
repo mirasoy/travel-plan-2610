@@ -43,7 +43,8 @@
 - 기본 필드: 항공편 `flightNo, depIata, arrIata, depLocal, arrLocal, memo`, 숙소 `name, checkIn, checkOut, memo` (플래너 설정 화면의 폼이 쓰는 필드와 같다).
 - 카드용 부가 필드(선택): `details` 는 `[{ "label": "터미널", "value": "인천 T2" }, ...]` 행 목록(최대 20행, 라벨 40자, 값 300자), `link` 는 `{ "label": "지도에서 보기", "url": "https://www.google.com/maps/..." }` 버튼 하나(구글맵 https 주소만). 형식이 틀리면 그 필드만 화면에서 숨긴다. 플래너 폼으로 저장해도 부가 필드는 유지된다.
 - 데이터는 JSON 가져오기로 넣는다. 가져오기 파일 예: `{ "flights": [{ "id": "out", "flightNo": "XX1", "details": [...] }], "lodgings": [{ "id": "stay", "name": "...", "checkIn": "2026-11-14", "checkOut": "2026-11-17", "link": {...} }] }`. 실제 여행 데이터가 든 파일은 저장소에 올리지 않는다.
-- 예약번호, 정확한 주소, 여권 이름 같은 진짜 비밀은 카드에 넣지 않고 Worker 의 `/vault`(내 정보)에 둔다.
+- 숙소 카드의 공개 부가 정보: `config.js` 의 `lodgingExtras`(`id, name, checkIn, checkOut, image, imageAlt, address, mapUrl, airbnbUrl`)를 쓰면 문서가 없어도 썸네일, 주소(옆에 지도 버튼), 에어비앤비 링크가 숙소 카드에 붙는다. `id` 가 숙소 문서 ID 와 같거나 숙소가 하나뿐이면 그 카드에 합쳐지고, 이때 문서의 옛 `link`(거리 기준 지도)는 중복이라 숨긴다. 이 값들은 저장소에 그대로 공개되는 것이 의도다(주소, 링크, 사진을 공개하기로 정함). `image` 는 `img/` 아래 상대 경로(jpg, png, webp)만, `mapUrl` 과 `airbnbUrl` 은 https 만 인정한다. 사진은 EXIF(위치, 촬영 정보)를 지운 뒤 올린다.
+- 예약번호, 호스트 연락처, 결제 수단, 여권 이름 같은 진짜 비밀은 카드에 넣지 않고 Worker 의 `/vault`(내 정보)에 둔다.
 - 가져올 때 앱이 쓰는 필드의 타입(문자열 필드에 객체가 오는 등)이 틀리면 그 필드만 버리고 미리보기에 건수를 알려 준다.
 
 ## Worker 사용 계약
