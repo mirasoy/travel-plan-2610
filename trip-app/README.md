@@ -103,7 +103,7 @@ Worker 소스는 이 저장소에 없다(비공개, Cloudflare 대시보드에�
 - `found: true` 이면 확인 없이 그대로 적용한다(선택 화면, 확인창, 후보 목록 없음). `found: false` 이면 아무것도 저장하지 않고 다음에 이름이 바뀔 때만 다시 시도한다(이전에 받은 사진은 그대로 남는다). 같은 이름으로는 연속해서 다시 부르지 않는다.
 - 저장 필드(pool 문서의 `photo` 맵): `source("wikimedia"), file, pageUrl, thumbUrl, license, licenseUrl, artist, credit, attributionRequired, match, fetchedAt`(+사용자가 숨기면 `hidden: true`). 이미지 파일이나 base64 는 저장하지 않고, 표시할 때 `thumbUrl` 을 위키미디어에서 직접 불러온다. 구글에서 받은 사진이나 사진 이름은 어디에도 저장하지 않는다.
 - `thumbUrl` 은 `thumb.wikimedia.org` 또는 `upload.wikimedia.org`, `pageUrl` 은 위키 도메인의 https 주소만 받는다. 다른 값이면 사진 없음으로 본다. URL 은 검증만 하고 응답이 준 문자열 그대로 쓴다. `artist`, `credit`, `license` 는 `textContent` 로만 화면에 넣는다(innerHTML 없음). 마크업 기호(`<`, `&`)가 없는 값(`User:이름` 같은 사용자명 포함)은 앞뒤 공백만 다듬고 변형하지 않으며, 마크업이 섞여 온 경우에만 태그를 걷어낸 평문으로 저장한다.
-- 화면: 카드에 썸네일과 한 줄 출처("사진: {artist}, {license}, Wikimedia Commons"). `license` 글자는 `licenseUrl` 로, "Wikimedia Commons" 글자는 `pageUrl` 로 각각 링크하고(새 탭, `rel="noopener noreferrer"`), 링크 대상은 응답이 준 값만 쓴다. `licenseUrl` 이 없으면 `license` 는 글자만 둔다. `artist` 는 링크 없이 그대로 표시한다. `match` 가 `brand` 이면 썸네일 모서리에 "브랜드 대표 사진" 글자 태그. 썸네일 로드에 실패하면 사진 영역만 숨긴다.
+- 화면: 카드에 썸네일과 한 줄 출처("사진: {artist}, {license}, Wikimedia Commons"). `license` 글자는 `licenseUrl` 로, "Wikimedia Commons" 글자는 `pageUrl` 로 각각 링크하고(새 탭, `rel="noopener noreferrer"`), 링크 대상은 응답이 준 값만 쓴다. `licenseUrl` 이 없으면 `license` 는 글자만 둔다. `artist` 는 링크 없이 그대로 표시한다. `match` 가 `brand` 이면 썸네일 모서리에 "브랜드 대표 사진(다른 지점일 수 있음)" 글자 태그. 출처 줄은 이미지 바로 아래에 항상 보이며(접거나 숨기지 않음) `license` 는 응답 문자열 그대로 표시한다(CC BY-SA 3.0, 4.0 등 버전이 다를 수 있다). 썸네일 로드에 실패하면 사진 영역만 숨긴다.
 - 카드 메뉴(더보기)의 "사진 숨기기"는 선택 기능이다. 누르면 `photo.hidden = true` 로 저장하고 다시 자동 적용하지 않는다(실행취소 가능).
 - 이 사진은 앱 카드 표시용이다. 영상 파이프라인이나 영상 합성에는 쓰지 않는다(CC BY-SA 조건).
 

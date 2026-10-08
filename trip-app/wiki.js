@@ -7,9 +7,12 @@
 // - 저장하는 것은 메타데이터와 URL 뿐이다(이미지 파일, base64 금지). 표시할 때 thumbUrl 을 위키미디어에서 직접 불러온다.
 // - artist, credit, license 는 태그를 걷어낸 평문으로만 저장하고 textContent 로만 화면에 넣는다.
 
+// 대표 사진이 같은 브랜드의 다른 지점 사진일 수 있음을 알리는 글자 태그(이모지 금지)
+export const BRAND_TAG = '브랜드 대표 사진(다른 지점일 수 있음)';
+
 export const WIKI_TIMEOUT_MS = 25 * 1000;   // Worker 내부 예산이 20초라 클라이언트는 25초. 사진은 저장 뒤 백그라운드로 불러오므로 사용자는 기다리지 않는다
 export const NAME_MAX = 200;
-const TEXT_MAX = { file: 200, license: 60, artist: 160, credit: 300 };
+const TEXT_MAX = { file: 200, license: 200, artist: 160, credit: 300 };   // license 는 응답 그대로 보여 주므로(버전이 다른 정식 명칭도 있다) 넉넉히
 const THUMB_HOSTS = ['thumb.wikimedia.org', 'upload.wikimedia.org'];   // 응답의 thumbUrl 호스트(둘 중 하나)
 
 // 화면에 쓸 평문. 마크업 기호(< 또는 &)가 없는 값("User:이름" 같은 사용자명 포함)은 앞뒤 공백만 다듬고 그대로 둔다(변형하지 않음).
@@ -164,7 +167,7 @@ export function renderPhoto(h, raw) {
   const img = h('img', { src: p.thumbUrl, alt: '', loading: 'lazy', decoding: 'async', referrerpolicy: 'no-referrer', draggable: 'false' });
   img.addEventListener('error', () => { fig.hidden = true; });
   fig.append(
-    h('div', { class: 'photo-frame' }, img, p.match === 'brand' ? h('span', { class: 'photo-tag' }, '브랜드 대표 사진') : null),
+    h('div', { class: 'photo-frame' }, img, p.match === 'brand' ? h('span', { class: 'photo-tag' }, BRAND_TAG) : null),
     creditLine(h, p));
   return fig;
 }

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createWiki, shouldLookup, photoFromResponse, validStoredPhoto, sanitizeStoredPhoto, hasVisiblePhoto, plainText, parseCenter, creditText, renderPhoto, WIKI_TIMEOUT_MS } from '../wiki.js';
+import { createWiki, shouldLookup, BRAND_TAG, photoFromResponse, validStoredPhoto, sanitizeStoredPhoto, hasVisiblePhoto, plainText, parseCenter, creditText, renderPhoto, WIKI_TIMEOUT_MS } from '../wiki.js';
 import { parseExport } from '../trip-import.js';
 import { fakeTimers, fakeFetch, fakeResponse, FakeDocument, FakeElement, loadAppHelpers, byTag, byClass, walk, readApp } from './helpers.mjs';
 
@@ -194,7 +194,8 @@ test('카드 렌더링(app.js 의 실제 h 사용): 썸네일, 출처 한 줄(li
   for (const a of links) assert.deepEqual([a.attrs.target, a.attrs.rel], ['_blank', 'noopener noreferrer']);
   assert.equal(byClass(fig, 'photo-tag').length, 0, 'exact 는 브랜드 태그 없음');
   const brand = renderPhoto(h, photoFromResponse(okBody({ match: 'brand' }), 1));
-  assert.deepEqual(byClass(brand, 'photo-tag').map(n => n.textContent), ['브랜드 대표 사진']);
+  assert.deepEqual(byClass(brand, 'photo-tag').map(n => n.textContent), ['브랜드 대표 사진(다른 지점일 수 있음)']);
+  assert.equal(BRAND_TAG, '브랜드 대표 사진(다른 지점일 수 있음)');
   img.dispatch('error');
   assert.equal(fig.hidden, true, '썸네일 로드 실패: 사진 영역만 숨김');
   assert.equal(renderPhoto(h, { ...exact, hidden: true }), null);
@@ -287,4 +288,47 @@ test('중복 호출 방지: 같은 이름은 다시 부르지 않고, 이름이 
   assert.equal(t2.size, 0, '숨김으로 막힌 호출은 기록하지 않는다');
   assert.equal(shouldLookup(t2, 'p1', '이름', { hidden: false }), '이름');
   for (const bad of ['', '   ', null, undefined, 5]) assert.equal(shouldLookup(new Map(), 'p', bad, null), null);
+});
+
+test('license 는 응답 그대로 저장하고 표시한다(버전이 다른 CC BY-SA 3.0, 4.0 등), 글자수 제한으로 잘리지 않는다', () => {
+  const doc = new FakeDocument();
+  const { h } = loadAppHelpers(doc, new FakeElement('div'));
+  const licenses = ['CC BY-SA 3.0', 'CC BY-SA 4.0', 'CC BY-SA 2.5', 'CC BY 2.0', 'CC BY-SA 3.0 de', 'CC0', 'Public domain', 'GFDL 1.2',
+    'Creative Commons Attribution-Share Alike 4.0 International', 'GNU Free Documentation License 1.2 or later', 'L'.repeat(150)];
+  for (const lic of licenses) {
+    const p = photoFromResponse(okBody({}, { license: lic }), 1);
+    assert.equal(p.license, lic, '저장값이 응답과 같다: ' + lic.slice(0, 40));
+    const credit = byClass(renderPhoto(h, p), 'photo-credit')[0];
+    assert.ok(credit.textContent.includes(', ' + lic + ', Wikimedia Commons'), '표시도 그대로: ' + lic.slice(0, 40));
+    assert.equal(byTag(credit, 'a')[0].textContent, lic, 'license 링크 글자가 응답 그대로');
+  }
+  assert.equal(photoFromResponse(okBody({}, { license: '  CC BY-SA 4.0  ' }), 1).license, 'CC BY-SA 4.0', '앞뒤 공백만 다듬는다');
+});
+
+test('출처 표기는 이미지 바로 아래에 항상 보인다: 접거나 숨기는 요소 없음, 순서(이미지 영역 다음), 스타일에 숨김/말줄임 없음', () => {
+  const doc = new FakeDocument();
+  const { h } = loadAppHelpers(doc, new FakeElement('div'));
+  const fig = renderPhoto(h, photoFromResponse(okBody({ match: 'brand' }), 1));
+  assert.deepEqual(fig.children.map(c => c.className), ['photo-frame', 'photo-credit'], '이미지 영역 바로 다음이 출처 줄');
+  const credit = fig.children[1];
+  assert.ok(!credit.hidden && !('hidden' in credit.attrs) && !/hidden|collapsed/.test(credit.className));
+  let tags = []; walk(fig, n => { if (n.nodeType === 1) tags.push(n.tagName); });
+  assert.ok(!tags.includes('DETAILS') && !tags.includes('SUMMARY'), '접는 요소(details, summary)를 쓰지 않는다');
+  assert.ok(!('title' in credit.attrs), '툴팁에만 있는 표기가 아니다');
+  // 출처 줄은 사진 영역의 자식이 아니라 형제여서 이미지 오버레이(태그)에 가려지지 않는다
+  assert.ok(!byClass(fig.children[0], 'photo-credit').length);
+  const css = readApp('style.css');
+  const block = (css.match(/\.photo-credit[^{]*\{[^}]*\}/g) || []).join('\n');
+  assert.ok(block.includes('.photo-credit'), 'photo-credit 스타일을 찾지 못함');
+  assert.ok(!/display\s*:\s*none|visibility\s*:\s*hidden|overflow\s*:\s*hidden|text-overflow|line-clamp|max-height|opacity\s*:\s*0|font-size\s*:\s*0|height\s*:\s*0/.test(block), '출처 줄을 숨기거나 자르는 스타일이 없다');
+  // 사진이 로드 실패해 영역이 숨겨질 때는 figure 전체가 숨는다(출처만 홀로 남지 않는다)
+  byTag(fig, 'img')[0].dispatch('error');
+  assert.equal(fig.hidden, true);
+});
+
+test('화면 문구에 이모지가 없다(브랜드 태그, 출처 줄)', () => {
+  const doc = new FakeDocument();
+  const { h } = loadAppHelpers(doc, new FakeElement('div'));
+  const fig = renderPhoto(h, photoFromResponse(okBody({ match: 'brand' }), 1));
+  assert.ok(!/\p{Extended_Pictographic}/u.test(fig.textContent + BRAND_TAG));
 });
