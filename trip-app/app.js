@@ -11,6 +11,7 @@ import { resolveKey, extractKey, saveKey, clearKey, inviteLink } from './trip-ke
 import { parseExport, summarize, chunk, COLLECTIONS, LIMITS, BATCH_SIZE } from './trip-import.js';
 import { buildSummary, renderCard } from './trip-summary.js';
 import { createSwipe, OPEN_PX } from './swipe.js';
+import { createWiki, renderPhoto, hasVisiblePhoto, shouldLookup } from './wiki.js';
 
 
 // 여행 키는 초대 링크(#k=)로만 들어온다. 없으면 init() 이 잠금 화면만 띄우고 Firestore 에는 아무것도 읽거나 쓰지 않는다.
@@ -272,7 +273,7 @@ async function registerAndAdd(text, pending, nameOverride) {
   const dup = findDuplicate(d);
   if (dup) {
     poolId = dup.id;
-    if (!dup.name) { dup.name = name; updateDoc(doc(poolCol, dup.id), { name }).catch(fail('이름 저장')); }
+    if (!dup.name) { dup.name = name; updateDoc(doc(poolCol, dup.id), { name }).catch(fail('이름 저장')); requestPhoto(dup.id, name); }
   } else {
     const ref = doc(poolCol);
     const data = {
@@ -283,6 +284,7 @@ async function registerAndAdd(text, pending, nameOverride) {
     // 스냅샷은 state.pool 을 통째로 교체하므로 낙관적 반영을 쓰기 호출보다 먼저 한다.
     state.pool.push({ id: ref.id, ...data });
     setDoc(ref, data).catch(fail('저장')); // 오프라인 대기 방지: await 하지 않는다
+    requestPhoto(ref.id, name);            // 사진은 저장이 끝난 뒤 따로 조회한다(기다리지 않는다)
     poolId = ref.id;
   }
   addItem({ poolId, title: name });
@@ -562,6 +564,51 @@ function openRouteSheet() {
   });
 }
 
+/* ---------- 장소 대표 사진(위키미디어) ---------- */
+// 새 장소를 저장할 때와, 이름이 정해지거나 바뀔 때만 Worker /wiki 를 한 번 부른다(목록을 열 때마다 부르지 않는다).
+// 저장은 응답을 기다리지 않는다. 찾으면 확인 없이 장소 문서의 photo 에 반영하고, 못 찾거나 실패하면 아무것도 하지 않는다(조용히).
+// 같은 이름으로는 다시 부르지 않고, 사용자가 숨긴 사진은 다시 적용하지 않는다. 구글 사진은 어디에도 저장하지 않는다.
+const wikiTimers = { setTimeout: (fn, ms) => setTimeout(fn, ms), clearTimeout: id => clearTimeout(id) };
+const wiki = createWiki({
+  getBaseUrl: () => CONFIG.resolverUrl,
+  getCenter: () => CONFIG.destinationCenter,
+  getRadiusKm: () => CONFIG.wikiRadiusKm,
+  fetchFn: (url, init) => fetch(url, init),
+  timers: wikiTimers,
+  now: () => Date.now()
+});
+const wikiTried = new Map(); // 장소 ID -> 마지막으로 조회한 이름(같은 이름 중복 호출 방지)
+
+function requestPhoto(poolId, name) {
+  if (!CONFIG.resolverUrl) return;
+  const p = state.pool.find(x => x.id === poolId);
+  const nm = shouldLookup(wikiTried, poolId, singleLine(name), p && p.photo);   // 빈 이름, 숨긴 사진, 같은 이름 중복 호출을 막는다
+  if (!nm) return;
+  wiki.lookup(nm).then(r => {
+    if (!r.ok) return;
+    const cur = state.pool.find(x => x.id === poolId);
+    if (!cur || singleLine(cur.name) !== nm) return;      // 그 사이 삭제됐거나 이름이 또 바뀜
+    if (cur.photo && cur.photo.hidden === true) return;
+    cur.photo = r.photo;
+    updateDoc(doc(poolCol, poolId), { photo: r.photo }).catch(() => { /* 사진은 부가 정보라 조용히 넘어간다 */ });
+    renderPlan();
+  });
+}
+
+// 카드 메뉴의 "사진 숨기기"(선택 기능). 숨기면 photo.hidden = true 로 저장하고 다시 자동 적용하지 않는다. 실행취소로 되돌릴 수 있다.
+function hidePhoto(poolId) {
+  const p = state.pool.find(x => x.id === poolId);
+  if (!p || !p.photo) return;
+  const setHidden = v => {
+    const cur = state.pool.find(x => x.id === poolId);
+    if (cur && cur.photo) cur.photo = Object.assign({}, cur.photo, { hidden: v });
+    updateDoc(doc(poolCol, poolId), { 'photo.hidden': v }).catch(fail(v ? '사진 숨기기' : '사진 되살리기'));
+    renderPlan();
+  };
+  setHidden(true);
+  toast('사진을 숨겼어요', { label: '실행취소', onclick: () => setHidden(false) });
+}
+
 /* ---------- 카드 스와이프(삭제 버튼)와 더보기 메뉴 ---------- */
 
 // 카드를 열면(삭제 버튼 노출) 다른 열린 카드는 닫는다. 열림 상태는 다시 그려도 유지된다(state.swipeOpenId).
@@ -703,6 +750,7 @@ function itemCard(it, idx, n) {
         if (t !== p.name) {
           p.name = t;
           updateDoc(doc(poolCol, p.id), { name: t }).catch(fail('이름 수정'));
+          requestPhoto(p.id, t);
         }
         patch.title = t;
       } else {
@@ -740,22 +788,25 @@ function itemCard(it, idx, n) {
       h('span', { class: 'item-time' }, it.time || '--:--'),
       h('span', { class: 'item-title' }, itemTitle(it))));
   if (it.memo) main.append(h('div', { class: 'memo' }, it.memo));
+  const photoNode = p ? renderPhoto(h, p.photo) : null;   // 위키미디어 대표 사진(있을 때만). 본문 줄 아래에 카드 폭으로 붙인다
 
   // 오른쪽 도구: 지도 아이콘(링크가 있을 때만), 더보기(수정, 일차 이동). 삭제는 카드를 왼쪽으로 밀어서 한다.
   const mapHref = p ? mapOpenUrl(p, CONFIG.destinationCity) : '';
+  const menuEntries = [
+    { label: '수정', run: () => { state.editingItemId = it.id; state.focusEdit = true; renderPlan(); } },
+    { label: '일차 이동', run: () => openMoveDaySheet(it) }
+  ];
+  if (p && hasVisiblePhoto(p.photo)) menuEntries.push({ label: '사진 숨기기', run: () => hidePhoto(p.id) }); // 선택 기능
   const tools = h('div', { class: 'item-tools' },
     mapHref ? h('a', { class: 'icon-btn map-btn', href: mapHref, target: '_blank', rel: 'noopener', 'aria-label': '지도 열기', title: '지도' },
       h('img', { src: 'icons/map.png', alt: '', width: '26', height: '26', draggable: 'false' })) : null,
     h('button', {
       type: 'button', class: 'icon-btn kebab', 'aria-label': '더보기', 'aria-haspopup': 'menu', 'aria-expanded': 'false',
-      onclick: e => openItemMenu(e.currentTarget, it.id, [
-        { label: '수정', run: () => { state.editingItemId = it.id; state.focusEdit = true; renderPlan(); } },
-        { label: '일차 이동', run: () => openMoveDaySheet(it) }
-      ])
+      onclick: e => openItemMenu(e.currentTarget, it.id, menuEntries)
     }));
   tools.querySelector('.kebab').innerHTML = '<svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><circle cx="4" cy="10" r="1.8"/><circle cx="10" cy="10" r="1.8"/><circle cx="16" cy="10" r="1.8"/></svg>';
 
-  const body = h('div', { class: 'swipe-body' }, handle, main, tools);
+  const body = h('div', { class: 'swipe-body' }, handle, main, tools, photoNode);
   const del = h('button', {
     type: 'button', class: 'swipe-del', tabindex: '-1', 'aria-hidden': 'true',
     onclick: () => { setCardOpen(card, it.id, false); removeItem(it); }

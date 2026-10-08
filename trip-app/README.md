@@ -65,6 +65,7 @@ Worker 소스는 이 저장소에 없다(비공개, Cloudflare 대시보드에�
 | GET /airport?code=TPE | 항공편 공항 확정 | candidates 에 타오위안 국제공항이 오는지 |
 | POST /legs | 구간 이동시간, 구간 지도 | 앱의 일정 화면에서 이동시간 배지가 나오는지 |
 | POST /vault | 내 정보(예약번호 등) | 아래 계약 |
+| GET /wiki | 장소 대표 사진(위키미디어) | 아래 계약 |
 
 이동시간과 거리는 구글 약관의 캐싱 제한 때문에 어디에도 저장하지 않는다(메모리 캐시뿐, 새로고침하면 다시 계산).
 
@@ -86,6 +87,23 @@ Worker 소스는 이 저장소에 없다(비공개, Cloudflare 대시보드에�
 - 60초 무조작, 탭이 백그라운드로 감, 모달 닫기 중 하나가 일어나면 화면의 데이터를 지운다.
 - 응답 데이터는 Firestore, IndexedDB, localStorage, sessionStorage, Cache Storage, JSON 내보내기, 콘솔 어디에도 남기지 않는다. 서비스워커는 /vault 요청을 가로채지도 캐시하지도 않는다.
 - 오류 문구: 401 "토큰이 달라요", 429 "잠시 뒤에 다시 시도해 주세요(N분 뒤)", 503/500/403 "서버 설정을 확인해 주세요", 네트워크 실패 "연결을 확인해 주세요". 토큰과 응답 내용은 문구에 넣지 않는다.
+
+### GET /wiki (장소 대표 사진)
+
+- 호출: `GET {resolverUrl}/wiki?name={장소 이름}&near={위도,경도}&radiusKm={숫자}` (POST `{name, near, radiusKm}` 도 가능). `near`, `radiusKm` 은 선택이다.
+- `near` 는 config.js 의 `destinationCenter`(여행지 중심, 직접 입력한 값)만 쓴다. 비우거나 형식이 틀리면 `near`, `radiusKm` 없이 이름만 보낸다. 장소의 구글 좌표나 GPS 값은 보내지 않는다. 반경은 `wikiRadiusKm`(기본 80).
+- 응답: `{ success, found, match("exact"|"brand"), entityId, label, image:{ file, pageUrl, thumbUrl, thumbWidth, thumbHeight, fullUrl, license, licenseUrl, artist, credit, attributionRequired }, reason }`
+- 오류: 400(invalid_name, invalid_near, invalid_radius), 403(origin_not_allowed), 502(wiki_unavailable), 503(wiki_ua_not_configured). 502, 503, 네트워크 오류, 10초 타임아웃은 모두 "사진 없음"으로 조용히 처리하고(오류 화면, 로그, 자동 재시도 없음) 400, 403 도 같다.
+- 단순 GET 요청이라 CORS 사전 요청(OPTIONS)은 필요 없다. 응답에 `Access-Control-Allow-Origin` 만 있으면 된다.
+
+앱 쪽 동작(wiki.js)
+- 조회 시점은 장소를 저장할 때(링크나 이름으로 새 장소 문서를 만들 때, 이름이 비어 있던 장소에 이름이 정해질 때)와 일정 카드에서 이름을 고쳐 저장할 때뿐이다. 목록을 열 때마다 부르지 않는다(정적 테스트가 호출 지점을 지킨다). 저장은 응답을 기다리지 않고 먼저 끝나며, 사진은 도착하면 해당 장소 문서의 `photo` 에 나중에 반영한다.
+- `found: true` 이면 확인 없이 그대로 적용한다(선택 화면, 확인창, 후보 목록 없음). `found: false` 이면 아무것도 저장하지 않고 다음에 이름이 바뀔 때만 다시 시도한다(이전에 받은 사진은 그대로 남는다). 같은 이름으로는 연속해서 다시 부르지 않는다.
+- 저장 필드(pool 문서의 `photo` 맵): `source("wikimedia"), file, pageUrl, thumbUrl, license, licenseUrl, artist, credit, attributionRequired, match, fetchedAt`(+사용자가 숨기면 `hidden: true`). 이미지 파일이나 base64 는 저장하지 않고, 표시할 때 `thumbUrl` 을 위키미디어에서 직접 불러온다. 구글에서 받은 사진이나 사진 이름은 어디에도 저장하지 않는다.
+- `thumbUrl` 은 `upload.wikimedia.org`(또는 commons), `pageUrl` 은 위키 도메인의 https 주소만 받는다. 다른 값이면 사진 없음으로 본다. `artist`, `credit`, `license` 는 태그를 걷어낸 평문으로 저장하고 `textContent` 로만 화면에 넣는다(innerHTML 없음).
+- 화면: 카드에 썸네일과 한 줄 출처("사진: {artist}, {license}, Wikimedia Commons", 탭하면 `pageUrl` 을 새 탭으로, `rel="noopener noreferrer"`). `match` 가 `brand` 이면 썸네일 모서리에 "브랜드 대표 사진" 글자 태그. 썸네일 로드에 실패하면 사진 영역만 숨긴다.
+- 카드 메뉴(더보기)의 "사진 숨기기"는 선택 기능이다. 누르면 `photo.hidden = true` 로 저장하고 다시 자동 적용하지 않는다(실행취소 가능).
+- 이 사진은 앱 카드 표시용이다. 영상 파이프라인이나 영상 합성에는 쓰지 않는다(CC BY-SA 조건).
 
 ## 테스트, 커밋 전 검사
 

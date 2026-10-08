@@ -7,6 +7,10 @@ export const CONFIG = {
   resolverUrl: 'https://getgooglemapurl.runaica90.workers.dev',
   // 지도 열기의 마지막 대체 검색어에 붙는 도시(이름 + 도시로 검색).
   destinationCity: '타이베이',
+  // 장소 대표 사진(위키미디어) 조회에 보내는 여행지 중심 좌표 "위도,경도"(예: "25.0330,121.5654"). 직접 입력한다.
+  // 비우거나 형식이 틀리면 near, radiusKm 없이 이름만 보낸다. 장소의 구글 좌표나 GPS 값은 보내지 않는다.
+  destinationCenter: '',
+  wikiRadiusKm: 80,
 
   // Maps Embed API 전용 공개 키(API 제한: Maps Embed API만, 웹사이트 제한: 이 앱의 origin).
   // Worker 의 GOOGLE_PLACES_KEY 와 절대 같은 키를 쓰지 않는다. 비우면 지도 관련 버튼을 숨긴다.

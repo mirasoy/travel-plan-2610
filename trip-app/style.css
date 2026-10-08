@@ -163,6 +163,7 @@ textarea.input { resize: vertical; }
 .item { display: block; padding: 0; position: relative; overflow: hidden; }
 .swipe-body {
   display: flex; gap: 12px; align-items: flex-start;
+  flex-wrap: wrap;               /* 사진은 본문 줄 아래 한 줄을 통째로 쓴다 */
   padding: 16px; background: var(--card); position: relative;
   touch-action: pan-y;            /* 세로 스크롤은 브라우저, 가로 이동은 우리가 받는다 */
   transition: transform .2s ease; will-change: transform;
@@ -181,6 +182,14 @@ textarea.input { resize: vertical; }
 .item-time { font-weight: 700; font-size: 13px; color: var(--theme); min-width: 44px; font-variant-numeric: tabular-nums; }
 .item-title { font-size: 17px; font-weight: 700; word-break: break-word; }
 .item .memo { margin: 4px 0 0 56px; }
+.place-photo { flex: 0 0 calc(100% - 38px); margin: 0 0 0 38px; min-width: 0; }   /* 시간 열 시작선에 맞춰 카드 폭으로 */
+.photo-frame { position: relative; border-radius: 12px; overflow: hidden; background: var(--soft); }
+.photo-frame img { display: block; width: 100%; max-height: 180px; object-fit: cover; }
+.photo-tag {
+  position: absolute; left: 8px; top: 8px; padding: 2px 8px; border-radius: 999px;
+  font-size: 11px; font-weight: 700; color: #fff; background: rgba(17, 20, 24, .62);
+}
+.photo-credit { display: block; margin-top: 4px; font-size: 11px; color: var(--muted); text-decoration: underline; word-break: break-word; }
 .item-tools { flex: 0 0 auto; display: flex; align-items: center; margin: -8px -10px 0 0; }
 .icon-btn {
   width: 40px; height: 40px; padding: 0; border: 0; border-radius: 12px; background: none;
