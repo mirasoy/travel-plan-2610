@@ -81,13 +81,27 @@ test('found false, success false, 이미지 없음, match 이상: 사진 없음'
   for (const b of [null, undefined, 'x', 5, [], {}]) assert.equal(photoFromResponse(b, 1), null);
 });
 
-test('URL 검증: 썸네일은 위키미디어 https, 페이지는 위키 https. 그 밖(javascript:, data:, http, 외부 도메인, 계정정보)은 사진 없음', () => {
+test('URL 검증: 썸네일은 thumb/upload.wikimedia.org https 만, 페이지는 위키 https. 그 밖은 사진 없음. 쿼리스트링은 응답 그대로 보존', () => {
   const bad = ['javascript:alert(1)', 'data:image/png;base64,AAAA', 'http://upload.wikimedia.org/a.jpg', 'https://evil.example/a.jpg',
-    'https://upload.wikimedia.org.evil.example/a.jpg', 'https://user:pw@upload.wikimedia.org/a.jpg', '//upload.wikimedia.org/a.jpg', '', null, 5, 'x'.repeat(1100)];
-  for (const u of bad) assert.equal(photoFromResponse(okBody({}, { thumbUrl: u }), 1), null, 'thumb ' + String(u).slice(0, 30));
+    'https://upload.wikimedia.org.evil.example/a.jpg', 'https://user:pw@upload.wikimedia.org/a.jpg', '//upload.wikimedia.org/a.jpg', '', null, 5, 'x'.repeat(2100),
+    'https://commons.wikimedia.org/wiki/Special:FilePath/X.jpg?width=640', 'https://sub.upload.wikimedia.org/a.jpg', 'https://wikimedia.org/a.jpg'];
+  for (const u of bad) assert.equal(photoFromResponse(okBody({}, { thumbUrl: u }), 1), null, 'thumb ' + String(u).slice(0, 40));
   for (const u of ['javascript:alert(1)', 'http://commons.wikimedia.org/x', 'https://evil.example/', 'https://commons.wikimedia.org.evil.example/x', null]) assert.equal(photoFromResponse(okBody({}, { pageUrl: u }), 1), null, 'page ' + String(u));
   assert.ok(photoFromResponse(okBody({}, { pageUrl: 'https://ko.wikipedia.org/wiki/File:X.jpg' }), 1), '위키백과 호스트 허용');
-  assert.ok(photoFromResponse(okBody({}, { thumbUrl: 'https://commons.wikimedia.org/wiki/Special:FilePath/X.jpg?width=640' }), 1), 'Special:FilePath 허용');
+  // 쿼리스트링(utm_...)을 지우거나 정규화하지 않고 그대로 저장, 표시한다
+  for (const u of ['https://thumb.wikimedia.org/wikipedia/commons/thumb/a/ab/FAKE.jpg/640px-FAKE.jpg?utm_source=app&utm_medium=card&utm_campaign=x%20y',
+    'https://upload.wikimedia.org/wikipedia/commons/thumb/a/ab/FAKE.jpg/640px-FAKE.jpg?utm_source=app',
+    'https://upload.wikimedia.org/wikipedia/commons/thumb/a/ab/FAKE.jpg/640px-FAKE.jpg?a=1&a=2&b=%ED%95%9C#frag']) {
+    assert.equal(photoFromResponse(okBody({}, { thumbUrl: u }), 1).thumbUrl, u, '원본 그대로: ' + u);
+  }
+  assert.equal(photoFromResponse(okBody({}, { thumbUrl: '  ' + THUMB + '?utm_source=x  ' }), 1).thumbUrl, THUMB + '?utm_source=x', '앞뒤 공백만 다듬는다');
+  // URL 파서가 정규화하면 값이 바뀌는 입력(한글, 공백, 대문자 호스트, 기본 포트, 소문자 %2f, 경로 없음)도 응답 그대로 보존한다
+  for (const u of ['https://upload.wikimedia.org/a.jpg?utm_term=한글 검색&u=A%2fb', 'HTTPS://UPLOAD.WIKIMEDIA.ORG/a.jpg?utm_source=X', 'https://upload.wikimedia.org:443/a.jpg?q=1',
+    'https://thumb.wikimedia.org/a/../b.jpg?utm_source=x', 'https://thumb.wikimedia.org?utm_source=x']) {
+    assert.notEqual(new URL(u).href, u, '이 입력은 정규화하면 달라진다(테스트가 정규화 변이를 구분할 수 있다): ' + u);
+    assert.equal(photoFromResponse(okBody({}, { thumbUrl: u }), 1).thumbUrl, u, '정규화하지 않고 그대로: ' + u);
+  }
+  assert.equal(photoFromResponse(okBody({}, { pageUrl: PAGE + '?utm_source=x' }), 1).pageUrl, PAGE + '?utm_source=x');
   assert.equal(photoFromResponse(okBody({}, { licenseUrl: 'javascript:alert(1)' }), 1).licenseUrl, '', '라이선스 링크가 틀려도 사진은 살리고 링크만 비움');
 });
 
@@ -106,16 +120,17 @@ test('실패는 전부 조용히 사진 없음: 400, 403, 404, 500, 502, 503, �
   assert.deepEqual(logged, [], '콘솔 출력 없음');
 });
 
-test('10초 타임아웃: 응답이 없으면 중단하고 사진 없음, 타이머는 정리, 자동 재시도 없음', async () => {
+test('25초 타임아웃(Worker 내부 예산 20초): 응답이 없으면 중단하고 사진 없음, 타이머는 정리, 자동 재시도 없음', async () => {
+  assert.equal(WIKI_TIMEOUT_MS, 25000);
   const hang = make((u, init) => new Promise((_, rej) => init.signal.addEventListener('abort', () => rej(new Error('aborted')))));
   const p = hang.wiki.lookup('x');
-  hang.timers.advance(WIKI_TIMEOUT_MS - 1); assert.equal(hang.timers.pending(), 1, '9.999초에는 아직 대기');
+  hang.timers.advance(20000); assert.equal(hang.timers.pending(), 1, 'Worker 예산 20초가 지나도 클라이언트는 아직 대기(20초에 끊지 않는다)');
+  hang.timers.advance(WIKI_TIMEOUT_MS - 20000 - 1); assert.equal(hang.timers.pending(), 1, '24.999초에도 대기');
   hang.timers.advance(1);
   assert.deepEqual(await p, { ok: false });
   assert.equal(hang.timers.pending(), 0);
-  hang.timers.advance(60000);
+  hang.timers.advance(120000);
   assert.equal(hang.fetchFn.calls.length, 1, '재시도 없음');
-  assert.equal(WIKI_TIMEOUT_MS, 10000);
   const fast = make(() => fakeResponse(200, okBody())); await fast.wiki.lookup('x');
   assert.equal(fast.timers.pending(), 0, '성공해도 타이머가 남지 않는다');
 });
@@ -162,42 +177,91 @@ test('가져오기: pool 의 photo 는 검증, 틀리면 그 필드만 버림(�
   assert.equal(r.sanitized, 2);
 });
 
-test('카드 렌더링(app.js 의 실제 h 사용): 썸네일, 출처 한 줄, 링크 속성, brand 태그, 숨김/오류 처리', () => {
+test('카드 렌더링(app.js 의 실제 h 사용): 썸네일, 출처 한 줄(license, Wikimedia Commons 각각 링크), brand 태그, 숨김/오류 처리', () => {
   const doc = new FakeDocument();
   const { h } = loadAppHelpers(doc, new FakeElement('div'));
   const exact = photoFromResponse(okBody(), 1);
   const fig = renderPhoto(h, exact);
-  const img = byTag(fig, 'img')[0], a = byTag(fig, 'a')[0];
+  const img = byTag(fig, 'img')[0];
   assert.equal(img.attrs.src, THUMB);
   assert.equal(img.attrs.alt, '');
   assert.equal(img.attrs.referrerpolicy, 'no-referrer');
-  assert.equal(a.textContent, '사진: FAKE Artist, CC BY-SA 4.0, Wikimedia Commons');
-  assert.deepEqual([a.attrs.href, a.attrs.target, a.attrs.rel], [PAGE, '_blank', 'noopener noreferrer']);
+  const credit = byClass(fig, 'photo-credit')[0];
+  assert.equal(credit.textContent, '사진: FAKE Artist, CC BY-SA 4.0, Wikimedia Commons');
+  const links = byTag(credit, 'a');
+  assert.deepEqual(links.map(a => a.textContent), ['CC BY-SA 4.0', 'Wikimedia Commons'], 'license 글자와 Wikimedia Commons 글자가 각각 링크, artist 는 링크 아님');
+  assert.deepEqual(links.map(a => a.attrs.href), ['https://creativecommons.org/licenses/by-sa/4.0', PAGE], '링크 대상은 응답이 준 licenseUrl, pageUrl 그대로');
+  for (const a of links) assert.deepEqual([a.attrs.target, a.attrs.rel], ['_blank', 'noopener noreferrer']);
   assert.equal(byClass(fig, 'photo-tag').length, 0, 'exact 는 브랜드 태그 없음');
-  assert.deepEqual(renderPhoto(h, photoFromResponse(okBody({ match: 'brand' }), 1)) && byClass(renderPhoto(h, photoFromResponse(okBody({ match: 'brand' }), 1)), 'photo-tag').map(n => n.textContent), ['브랜드 대표 사진']);
+  const brand = renderPhoto(h, photoFromResponse(okBody({ match: 'brand' }), 1));
+  assert.deepEqual(byClass(brand, 'photo-tag').map(n => n.textContent), ['브랜드 대표 사진']);
   img.dispatch('error');
   assert.equal(fig.hidden, true, '썸네일 로드 실패: 사진 영역만 숨김');
   assert.equal(renderPhoto(h, { ...exact, hidden: true }), null);
   assert.equal(renderPhoto(h, null), null);
-  assert.equal(creditText({ artist: '', license: '', }), '사진: Wikimedia Commons');
-  assert.equal(creditText({ artist: '', license: 'CC0' }), '사진: CC0, Wikimedia Commons');
 });
 
-test('저장 문서가 HTML 을 품어도 화면에서 태그가 실행되지 않는다(요소 생성 0, 글자 그대로 평문)', () => {
+test('출처 줄 변형: licenseUrl 이 없으면 license 는 글자만, license/artist 가 비면 건너뜀, Wikimedia Commons 링크는 항상', () => {
   const doc = new FakeDocument();
   const { h } = loadAppHelpers(doc, new FakeElement('div'));
-  // 정상 경로(정리됨)와, 정리를 우회해 Firestore 에 직접 쓴 위조 문서 모두
+  const line = over => { const f = renderPhoto(h, photoFromResponse(okBody({}, over), 1)); const c = byClass(f, 'photo-credit')[0]; return [c.textContent, byTag(c, 'a').map(a => a.textContent)]; };
+  assert.deepEqual(line({ licenseUrl: '' }), ['사진: FAKE Artist, CC BY-SA 4.0, Wikimedia Commons', ['Wikimedia Commons']], 'licenseUrl 이 없으면 license 링크를 만들어 내지 않는다');
+  assert.deepEqual(line({ licenseUrl: 'javascript:alert(1)' }), ['사진: FAKE Artist, CC BY-SA 4.0, Wikimedia Commons', ['Wikimedia Commons']]);
+  assert.deepEqual(line({ artist: '' }), ['사진: CC BY-SA 4.0, Wikimedia Commons', ['CC BY-SA 4.0', 'Wikimedia Commons']]);
+  assert.deepEqual(line({ license: '', licenseUrl: '' }), ['사진: FAKE Artist, Wikimedia Commons', ['Wikimedia Commons']]);
+  assert.deepEqual(line({ artist: '', license: '', licenseUrl: '' }), ['사진: Wikimedia Commons', ['Wikimedia Commons']]);
+  assert.equal(creditText({ artist: '', license: '' }), '사진: Wikimedia Commons');
+});
+
+test('artist 는 변형하지 않는다: "User:이름" 형태 그대로 표시, 링크 아님', () => {
+  const doc = new FakeDocument();
+  const { h } = loadAppHelpers(doc, new FakeElement('div'));
+  for (const name of ['User:이름', 'User:Foo_Bar', 'User:A  B', 'User:Name (talk)', 'Name/Sub', '이름 · Name']) {
+    const p = photoFromResponse(okBody({}, { artist: name }), 1);
+    assert.equal(p.artist, name, '저장값이 원본과 같다: ' + name);
+    const c = byClass(renderPhoto(h, p), 'photo-credit')[0];
+    assert.ok(c.textContent.startsWith('사진: ' + name + ', '), '표시도 그대로: ' + name);
+    assert.ok(!byTag(c, 'a').some(a => a.textContent === name), 'artist 는 링크로 만들지 않는다');
+  }
+  assert.equal(photoFromResponse(okBody({}, { artist: '  User:이름  ' }), 1).artist, 'User:이름', '앞뒤 공백만 다듬는다');
+  assert.equal(plainText('User:이름', 100), 'User:이름');
+});
+
+test('응답의 추가 필드(version, trace 등)는 무시한다: 저장하지도 표시하지도 않는다', async () => {
+  const body = okBody({ version: 3, trace: { id: 'FAKE-TRACE', steps: ['a', 'b'] }, debug: 'x' }, { trace: 'FAKE-IMG-TRACE', version: 2, extra: { a: 1 } });
+  const { wiki } = make(() => fakeResponse(200, body));
+  const { photo } = await wiki.lookup('x');
+  assert.deepEqual(Object.keys(photo).sort(), ['artist', 'attributionRequired', 'credit', 'fetchedAt', 'file', 'license', 'licenseUrl', 'match', 'pageUrl', 'source', 'thumbUrl']);
+  const saved = JSON.stringify(photo);
+  assert.ok(!/trace|version|FAKE-TRACE|FAKE-IMG-TRACE|debug|extra/i.test(saved), '저장 값에 없다: ' + saved.slice(0, 80));
+  const doc = new FakeDocument();
+  const { h } = loadAppHelpers(doc, new FakeElement('div'));
+  const shown = renderPhoto(h, photo);
+  let all = ''; walk(shown, n => { if (n.nodeType === 3) all += n.text; else all += Object.values(n.attrs).join(' '); });
+  assert.ok(!/trace|version|FAKE-/i.test(all), '화면(글자, 속성)에도 없다');
+  const r = parseExport(JSON.stringify({ pool: [{ id: 'a', name: 'n', photo: { ...photo, trace: 'FAKE-TRACE', version: 9 } }] }));
+  assert.ok(!JSON.stringify(r.docs[0].data).match(/trace|version/i), '가져오기도 걸러낸다');
+});
+
+test('저장 문서가 HTML 을 품어도 화면에서 태그가 실행되지 않는다(요소 생성 0), 평문은 건드리지 않는다', () => {
+  const doc = new FakeDocument();
+  const { h } = loadAppHelpers(doc, new FakeElement('div'));
+  // 정리를 우회해 Firestore 에 직접 쓴 위조 문서
   const forged = { ...photoFromResponse(okBody(), 1), artist: '<img src=x onerror=alert(1)>', license: '<b>CC</b>', hidden: false };
   const fig = renderPhoto(h, forged);
   let bad = 0; walk(fig, n => { if (n.nodeType === 1 && ['FIGURE', 'DIV', 'IMG', 'A', 'SPAN'].indexOf(n.tagName) === -1) bad += 1; });
   assert.equal(bad, 0, '허용된 요소(figure, div, img, a, span)만 존재');
   assert.equal(byTag(fig, 'img').length, 1, '썸네일 img 하나뿐(artist 의 img 태그가 요소가 되지 않음)');
-  // 렌더러가 저장된 값도 한 번 더 평문으로 정리한다: 태그만 있던 artist 는 사라지고 <b>CC</b> 는 CC 가 된다
-  assert.equal(byTag(fig, 'a')[0].textContent, '사진: CC, Wikimedia Commons');
+  // 렌더러가 저장된 값도 한 번 더 정리한다: 태그만 있던 artist 는 사라지고 <b>CC</b> 는 CC 가 된다
+  assert.equal(byClass(fig, 'photo-credit')[0].textContent, '사진: CC, Wikimedia Commons');
   // 정리 없이 값이 그대로 들어간다 해도 textContent 라 요소가 되지 않음을 h 단에서 확인
   const raw = h('a', null, '<img src=x onerror=alert(1)>');
   assert.equal(byTag(raw, 'img').length, 0);
   assert.equal(raw.textContent, '<img src=x onerror=alert(1)>');
+  // 마크업 기호가 없는 평문(사용자명)은 그대로
+  assert.equal(plainText('User:<이름', 50), 'User:<이름', '닫는 > 가 없는 < 는 태그가 아니므로 그대로(textContent 라 안전)');
+  assert.equal(plainText('User:<b>이름</b>', 50), 'User: 이름', '실제 태그만 걷는다');
+  assert.equal(plainText('A & B', 50), 'A & B', '단독 & 는 엔티티가 아니므로 그대로');
 });
 
 test('소스 규칙: 순수 모듈(DOM, 저장소, 콘솔, innerHTML 없음), 구글 사진 필드/이미지 데이터 저장 코드 없음', () => {
