@@ -35,7 +35,12 @@
     <div id="day-tabs" class="day-tabs"></div>
     <div class="day-head">
       <h2 id="day-title" class="section-title"></h2>
-      <button id="route-btn" class="btn ghost small" type="button" hidden>전체 경로</button>
+      <div class="head-actions">
+        <button id="route-btn" class="btn ghost small" type="button" hidden>전체 경로</button>
+        <button id="places-btn" class="icon-btn" type="button" aria-label="저장된 장소 목록">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>
+        </button>
+      </div>
     </div>
     <div id="day-basis" class="basis" hidden></div>
     <div id="day-warn" class="warns" hidden></div>
