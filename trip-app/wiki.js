@@ -3,18 +3,23 @@
 //
 // 규칙
 // - 보내는 것: 장소 이름, 그리고 config.destinationCenter(여행지 중심, 직접 입력한 값)와 반경. 장소의 구글 좌표나 GPS 는 보내지 않는다.
-// - 실패(400, 403, 502, 503, 네트워크, 10초 타임아웃, 형식 이상)는 전부 "사진 없음"으로 조용히 처리한다. 로그도 오류 화면도 자동 재시도도 없다.
+// - 실패(400, 403, 502, 503, 네트워크, 25초 타임아웃, 형식 이상)는 전부 "사진 없음"으로 조용히 처리한다. 로그도 오류 화면도 자동 재시도도 없다.
 // - 저장하는 것은 메타데이터와 URL 뿐이다(이미지 파일, base64 금지). 표시할 때 thumbUrl 을 위키미디어에서 직접 불러온다.
 // - artist, credit, license 는 태그를 걷어낸 평문으로만 저장하고 textContent 로만 화면에 넣는다.
 
-export const WIKI_TIMEOUT_MS = 10 * 1000;
-export const NAME_MAX = 200;
-const TEXT_MAX = { file: 200, license: 60, artist: 160, credit: 300 };
-const THUMB_HOSTS = ['upload.wikimedia.org', 'commons.wikimedia.org'];
+// 대표 사진이 같은 브랜드의 다른 지점 사진일 수 있음을 알리는 글자 태그(이모지 금지)
+export const BRAND_TAG = '브랜드 대표 사진(다른 지점일 수 있음)';
 
-// Commons 에서 흔히 오는 HTML(<a href=...>이름</a>)을 평문으로: script/style 은 내용째 버리고, 태그를 걷고, 기본 엔티티를 풀고, 공백을 정리한다.
+export const WIKI_TIMEOUT_MS = 25 * 1000;   // Worker 내부 예산이 20초라 클라이언트는 25초. 사진은 저장 뒤 백그라운드로 불러오므로 사용자는 기다리지 않는다
+export const NAME_MAX = 200;
+const TEXT_MAX = { file: 200, license: 200, artist: 160, credit: 300 };   // license 는 응답 그대로 보여 주므로(버전이 다른 정식 명칭도 있다) 넉넉히
+const THUMB_HOSTS = ['thumb.wikimedia.org', 'upload.wikimedia.org'];   // 응답의 thumbUrl 호스트(둘 중 하나)
+
+// 화면에 쓸 평문. 마크업 기호(< 또는 &)가 없는 값("User:이름" 같은 사용자명 포함)은 앞뒤 공백만 다듬고 그대로 둔다(변형하지 않음).
+// 마크업이 섞여 온 경우에만(Commons 의 <a href=...>이름</a> 등) script/style 은 내용째 버리고, 태그를 걷고, 기본 엔티티를 풀고, 공백을 정리한다.
 export function plainText(v, max) {
   if (typeof v !== 'string') return '';
+  if (!/[<&]/.test(v)) { const t = v.trim(); return t.length > max ? t.slice(0, max).trim() : t; }
   let s = v.replace(/<(script|style)[\s\S]*?<\/\1\s*>/gi, ' ').replace(/<[^>]*>/g, ' ');
   s = s.replace(/&(amp|lt|gt|quot|apos|nbsp|#39);/gi, (m, e) => ({ amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ', '#39': "'" }[e.toLowerCase()]));
   s = s.replace(/\s+/g, ' ').trim();
@@ -22,12 +27,15 @@ export function plainText(v, max) {
 }
 
 // https 이고 허용 호스트인 URL 만 통과(javascript:, data:, http, 계정정보 포함 URL, 다른 도메인 차단). 아니면 ''.
+// 검증에만 URL 파서를 쓰고 값은 응답이 준 문자열 그대로 돌려준다: 쿼리스트링(utm_... 등)을 지우거나 정규화하지 않는다.
 function safeUrl(u, hostOk) {
-  if (typeof u !== 'string' || u.length > 1000) return '';
+  if (typeof u !== 'string') return '';
+  const raw = u.trim();
+  if (!raw || raw.length > 2000) return '';
   let p;
-  try { p = new URL(u); } catch (e) { return ''; }
+  try { p = new URL(raw); } catch (e) { return ''; }
   if (p.protocol !== 'https:' || p.username || p.password || !hostOk(p.hostname)) return '';
-  return p.href;
+  return raw;
 }
 const thumbHost = h => THUMB_HOSTS.includes(h);
 const pageHost = h => h === 'commons.wikimedia.org' || h.endsWith('.wikimedia.org') || h.endsWith('.wikipedia.org');
@@ -132,9 +140,22 @@ export function createWiki(deps) {
   };
 }
 
-// 이미지 아래 한 줄: "사진: {artist}, {license}, Wikimedia Commons" (비어 있는 항목은 건너뜀)
+// 이미지 아래 한 줄의 글자: "사진: {artist}, {license}, Wikimedia Commons" (비어 있는 항목은 건너뜀)
 export function creditText(p) {
   return '사진: ' + [p.artist, p.license, 'Wikimedia Commons'].filter(Boolean).join(', ');
+}
+
+// 출처 한 줄 노드. license 글자는 licenseUrl 로, "Wikimedia Commons" 글자는 pageUrl 로 각각 링크한다(새 탭, noopener noreferrer).
+// 링크 대상은 응답이 준 값만 쓰고, licenseUrl 이 없거나 틀리면 license 는 링크 없이 글자만 둔다. artist 는 링크 없이 그대로 표시한다.
+function creditLine(h, p) {
+  const link = (href, text) => h('a', { href, target: '_blank', rel: 'noopener noreferrer' }, text);
+  const parts = [];
+  if (p.artist) parts.push(p.artist);
+  if (p.license) parts.push(p.licenseUrl ? link(p.licenseUrl, p.license) : p.license);
+  parts.push(link(p.pageUrl, 'Wikimedia Commons'));
+  const kids = ['사진: '];
+  parts.forEach((part, i) => { if (i) kids.push(', '); kids.push(part); });
+  return h('div', { class: 'photo-credit' }, kids);
 }
 
 // 카드에 넣을 사진 노드. h 는 app.js 의 h(tag, attrs, ...kids)(textContent 기반). 보여 줄 게 없으면 null.
@@ -146,7 +167,7 @@ export function renderPhoto(h, raw) {
   const img = h('img', { src: p.thumbUrl, alt: '', loading: 'lazy', decoding: 'async', referrerpolicy: 'no-referrer', draggable: 'false' });
   img.addEventListener('error', () => { fig.hidden = true; });
   fig.append(
-    h('div', { class: 'photo-frame' }, img, p.match === 'brand' ? h('span', { class: 'photo-tag' }, '브랜드 대표 사진') : null),
-    h('a', { class: 'photo-credit', href: p.pageUrl, target: '_blank', rel: 'noopener noreferrer' }, creditText(p)));
+    h('div', { class: 'photo-frame' }, img, p.match === 'brand' ? h('span', { class: 'photo-tag' }, BRAND_TAG) : null),
+    creditLine(h, p));
   return fig;
 }
