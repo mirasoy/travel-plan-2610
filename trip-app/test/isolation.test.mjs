@@ -62,6 +62,13 @@ test('위키 사진 조회는 장소 저장/이름 변경 지점에서만 시작
   for (const name of ['renderPlanBody', 'renderPlan', 'renderSettings', 'renderSummary', 'showTab', 'renderAll', 'subscribe', 'init']) {
     assert.ok(!/requestPhoto|wiki\./.test(fn(name)), name + ' 에서 사진 조회를 시작하면 안 된다');
   }
+  // 내가 올린 사진 데이터(data URL)는 images 컬렉션에만, 한 함수(commitUserPhoto)에서만 쓴다. 장소 문서(pool)에는 표시(userPhoto)만 들어간다.
+  const commit = fn('commitUserPhoto');
+  assert.equal((app.match(/imagesCol/g) || []).length, 5, 'imagesCol 은 정의 1 + 읽기 1 + commit 쓰기/삭제 2 + 장소 삭제 1');
+  assert.match(commit, /batch\.set\(doc\(imagesCol, p\.id\), image\)/);
+  assert.match(commit, /batch\.update\(doc\(poolCol, p\.id\), \{ userPhoto \}\)/);
+  assert.ok(!/dataUrl/.test(app.replace(commit, '').match(/updateDoc\([^\n]*poolCol[^\n]*\)/g)?.join('\n') || ''), 'pool 문서 갱신에 이미지 데이터가 섞이면 안 된다');
+  assert.ok(!/localStorage[^\n]*(dataUrl|userImgs)|sessionStorage[^\n]*(dataUrl|userImgs)/.test(app), '올린 사진을 브라우저 저장소에 따로 넣지 않는다');
   const photoWrites = app.match(/photo[^\n]*updateDoc|updateDoc[^\n]*photo|setDoc[^\n]*photo/g) || [];
   assert.ok(photoWrites.every(l => !/base64|dataUrl|toDataURL/.test(l)));
 });
