@@ -4,6 +4,7 @@
 // 같은 ID 의 문서는 가져온 필드만 바뀌고(merge) 나머지 필드는 유지되며, 파일에 없는 문서는 건드리지 않고, 아무것도 삭제하지 않는다.
 
 import { sanitizeStoredPhoto } from './wiki.js';
+import { importableUserPhoto } from './user-photo.js';
 
 export const COLLECTIONS = ['pool', 'items', 'expenses', 'members', 'flights', 'lodgings'];
 export const LABELS = { pool: '장소', items: '일정', expenses: '경비', members: '멤버', flights: '항공편', lodgings: '숙소' };
@@ -102,6 +103,11 @@ export function sanitizeDoc(raw, col) {
   if (col === 'pool' && 'photo' in data) {
     const photo = sanitizeStoredPhoto(data.photo);
     if (photo === null) { delete data.photo; sanitized = true; } else data.photo = photo;
+  }
+  // 내가 넣은 사진: 주소 방식만 가져온다(올린 사진 데이터는 내보내기에 없으므로 표시만 남지 않게 버린다).
+  if (col === 'pool' && 'userPhoto' in data) {
+    const up = importableUserPhoto(data.userPhoto);
+    if (up === null) { delete data.userPhoto; sanitized = true; } else data.userPhoto = up;
   }
   // 카드용 부가 필드: 형식이 틀리면 그 필드만 버린다(문서는 살린다).
   if ('details' in data) {

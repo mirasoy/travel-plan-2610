@@ -12,6 +12,7 @@ import { parseExport, summarize, chunk, COLLECTIONS, LIMITS, BATCH_SIZE } from '
 import { buildSummary, renderCard } from './trip-summary.js';
 import { createSwipe, OPEN_PX } from './swipe.js';
 import { createWiki, renderPhoto, hasVisiblePhoto, shouldLookup } from './wiki.js';
+import { cleanUserPhoto, cleanPhotoUrl, cleanDataUrl, shrinkToLimit, renderUserPhoto } from './user-photo.js';
 
 
 // 여행 키는 초대 링크(#k=)로만 들어온다. 없으면 init() 이 잠금 화면만 띄우고 Firestore 에는 아무것도 읽거나 쓰지 않는다.
@@ -28,6 +29,7 @@ const poolCol = collection(tripRef, 'pool');
 const itemsCol = collection(tripRef, 'items');
 const flightsCol = collection(tripRef, 'flights');   // 문서 ID 고정: out, in
 const lodgingsCol = collection(tripRef, 'lodgings');
+const imagesCol = collection(tripRef, 'images');       // 내가 올린 장소 사진(문서 ID = 장소 ID). 카드가 보일 때만 읽는다
 
 const state = {
   trip: null,
@@ -583,6 +585,7 @@ const wikiTried = new Map(); // 장소 ID -> 마지막으로 조회한 이름(�
 function requestPhoto(poolId, name) {
   if (!CONFIG.resolverUrl) return;
   const p = state.pool.find(x => x.id === poolId);
+  if (p && p.userPhoto) return;                          // 직접 넣은 사진이 있으면 자동 조회하지 않는다
   const nm = shouldLookup(wikiTried, poolId, singleLine(name), p && p.photo);   // 빈 이름, 숨긴 사진, 같은 이름 중복 호출을 막는다
   if (!nm) return;
   wiki.lookup(nm).then(r => {
@@ -608,6 +611,78 @@ function hidePhoto(poolId) {
   };
   setHidden(true);
   toast('사진을 숨겼어요', { label: '실행취소', onclick: () => setHidden(false) });
+}
+
+/* ---------- 내가 넣은 장소 사진(주소 또는 올리기) ---------- */
+
+// 올린 사진의 data URL 캐시: 장소 ID -> 문자열(있음) | null(없음, 읽기 실패) | 'loading'. 카드가 처음 보일 때 한 번만 읽는다.
+const userImgs = new Map();
+const userImgVer = new Map();   // 캐시가 가리키는 올림 시각. 다른 기기에서 다시 올리면 장소 문서의 updatedAt 이 달라져 다시 읽는다
+function loadUserImage(poolId, ver) {
+  userImgs.set(poolId, 'loading'); userImgVer.set(poolId, ver);
+  getDoc(doc(imagesCol, poolId)).then(snap => {
+    const d = snap.exists() ? snap.data() : null;
+    userImgs.set(poolId, d ? (cleanDataUrl(d.dataUrl) || null) : null);
+  }).catch(() => userImgs.set(poolId, null)).then(() => renderPlan());
+}
+// 카드에 넣을 내 사진 노드(없으면 null). 우선순위가 위키 사진보다 높다. 읽는 동안은 위키 사진이 보인다.
+function userPhotoNode(p) {
+  const up = cleanUserPhoto(p.userPhoto);
+  if (!up) return null;
+  if (up.kind === 'url') return renderUserPhoto(h, up.url);
+  const cached = userImgs.get(p.id);
+  if (cached === undefined || (cached !== 'loading' && userImgVer.get(p.id) !== up.updatedAt)) { loadUserImage(p.id, up.updatedAt); return null; }
+  return typeof cached === 'string' && cached !== 'loading' ? renderUserPhoto(h, cached) : null;
+}
+
+function readImage(file) {
+  if (typeof createImageBitmap === 'function') {
+    return createImageBitmap(file, { imageOrientation: 'from-image' }).then(bmp => ({ src: bmp, w: bmp.width, h: bmp.height, done: () => bmp.close && bmp.close() }));
+  }
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file), img = new Image();
+    img.onload = () => resolve({ src: img, w: img.naturalWidth, h: img.naturalHeight, done: () => URL.revokeObjectURL(url) });
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('decode')); };
+    img.src = url;
+  });
+}
+
+// 파일 -> 줄인 JPEG data URL. 실패하면 null (사진이 아니거나 브라우저가 못 읽는 형식)
+async function shrinkImageFile(file) {
+  let img;
+  try { img = await readImage(file); } catch (e) { return null; }
+  try {
+    return shrinkToLimit(img.w, img.h, (w, hh, q) => {
+      const c = document.createElement('canvas'); c.width = w; c.height = hh;
+      const ctx = c.getContext('2d');
+      ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, w, hh);   // 투명 PNG 의 배경
+      ctx.drawImage(img.src, 0, 0, w, hh);
+      return c.toDataURL('image/jpeg', q);
+    });
+  } finally { img.done(); }
+}
+
+// 장소 문서의 userPhoto 를 바꾼다. 올린 사진 문서(images)는 같은 배치로 함께 쓰거나 지운다.
+function commitUserPhoto(p, userPhoto, image) {
+  const cur = state.pool.find(x => x.id === p.id);
+  if (!cur) return false;
+  const hadUpload = cur.userPhoto && cur.userPhoto.kind === 'upload';
+  cur.userPhoto = userPhoto;
+  const batch = writeBatch(db);
+  batch.update(doc(poolCol, p.id), { userPhoto });
+  if (image) batch.set(doc(imagesCol, p.id), image);
+  else if (hadUpload) batch.delete(doc(imagesCol, p.id));
+  batch.commit().catch(fail('사진 저장'));
+  if (image) { userImgs.set(p.id, image.dataUrl); userImgVer.set(p.id, userPhoto.updatedAt); } else userImgs.delete(p.id);
+  renderPlan();
+  return true;
+}
+const setUserPhotoUrl = (p, url) => commitUserPhoto(p, { kind: 'url', url }, null);
+const removeUserPhoto = p => commitUserPhoto(p, null, null);
+async function setUserPhotoFile(p, file) {
+  const r = await shrinkImageFile(file);
+  if (!r) return false;
+  return commitUserPhoto(p, { kind: 'upload', updatedAt: Date.now() }, { dataUrl: r.dataUrl, w: r.w, h: r.h, updatedAt: Date.now() });
 }
 
 /* ---------- 카드 스와이프(삭제 버튼)와 더보기 메뉴 ---------- */
@@ -789,7 +864,8 @@ function itemCard(it, idx, n) {
       h('span', { class: 'item-time' }, it.time || '--:--'),
       h('span', { class: 'item-title' }, itemTitle(it))));
   if (it.memo) main.append(h('div', { class: 'memo' }, it.memo));
-  const photoNode = p ? renderPhoto(h, p.photo) : null;   // 위키미디어 대표 사진(있을 때만). 본문 줄 아래에 카드 폭으로 붙인다
+  const userNode = p ? userPhotoNode(p) : null;
+  const photoNode = userNode || (p ? renderPhoto(h, p.photo) : null);   // 위키미디어 대표 사진(있을 때만). 본문 줄 아래에 카드 폭으로 붙인다
 
   // 오른쪽 도구: 지도 아이콘(링크가 있을 때만), 더보기(수정, 일차 이동). 삭제는 카드를 왼쪽으로 밀어서 한다.
   const mapHref = p ? mapOpenUrl(p, CONFIG.destinationCity) : '';
@@ -797,7 +873,7 @@ function itemCard(it, idx, n) {
     { label: '수정', run: () => { state.editingItemId = it.id; state.focusEdit = true; renderPlan(); } },
     { label: '일차 이동', run: () => openMoveDaySheet(it) }
   ];
-  if (p && hasVisiblePhoto(p.photo)) menuEntries.push({ label: '사진 숨기기', run: () => hidePhoto(p.id) }); // 선택 기능
+  if (p && !userNode && hasVisiblePhoto(p.photo)) menuEntries.push({ label: '사진 숨기기', run: () => hidePhoto(p.id) }); // 선택 기능
   const tools = h('div', { class: 'item-tools' },
     mapHref ? h('a', { class: 'icon-btn map-btn', href: mapHref, target: '_blank', rel: 'noopener', 'aria-label': '지도 열기', title: '지도' },
       h('img', { src: 'icons/map.png', alt: '', width: '26', height: '26', draggable: 'false' })) : null,
@@ -1025,6 +1101,8 @@ async function deletePlace(p) {
   const batch = writeBatch(db);
   items.forEach(i => batch.delete(doc(itemsCol, i.id)));
   batch.delete(doc(poolCol, p.id));
+  if (p.userPhoto && p.userPhoto.kind === 'upload') batch.delete(doc(imagesCol, p.id));
+  userImgs.delete(p.id);
   batch.commit().catch(fail('삭제'));
   renderPlan(); renderSummary();
   if (state.onPool) state.onPool();
@@ -1184,9 +1262,45 @@ function openPlacesSheet() {
       showList();
     };
     nameIn.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); save(); } });
+
+    // 사진: 바로 반영된다(이름, 메모의 저장 버튼과 별개). 직접 넣은 사진이 위키 사진보다 우선한다.
+    const state1 = h('div', { class: 'photo-state' });
+    const urlIn = h('input', { class: 'input', type: 'url', inputmode: 'url', autocomplete: 'off', placeholder: '사진 주소 (https://...)' });
+    const fileIn = h('input', { type: 'file', accept: 'image/*', hidden: true });
+    const showState = () => {
+      const up = cleanUserPhoto((state.pool.find(x => x.id === p.id) || {}).userPhoto);
+      state1.textContent = up ? (up.kind === 'upload' ? '올린 사진을 쓰는 중' : '사진 주소를 쓰는 중') : '직접 넣은 사진 없음 (자동 사진이 있으면 그걸 보여 줘요)';
+    };
+    const applyUrl = () => {
+      const u = cleanPhotoUrl(urlIn.value);
+      if (!u) { toast('https 로 시작하는 사진 주소를 넣어 주세요'); urlIn.focus(); return; }
+      if (setUserPhotoUrl(p, u)) { urlIn.value = ''; toast('사진 주소를 적용했어요'); showState(); }
+    };
+    urlIn.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); applyUrl(); } });
+    const pick = h('button', { type: 'button', class: 'btn', onclick: () => fileIn.click() }, '사진 올리기');
+    fileIn.addEventListener('change', async () => {
+      const f = fileIn.files && fileIn.files[0];
+      fileIn.value = '';
+      if (!f) return;
+      pick.disabled = true; state1.textContent = '사진 줄이는 중...';
+      let ok = false;
+      try { ok = await setUserPhotoFile(p, f); } finally { pick.disabled = false; }
+      toast(ok ? '사진을 올렸어요' : '이 사진은 처리하지 못했어요. 다른 사진이나 주소로 시도해 주세요');
+      showState();
+    });
+    const photoBox = h('div', { class: 'photo-box' },
+      h('div', null, '사진'), state1,
+      h('div', { class: 'row' },
+        pick,
+        h('button', { type: 'button', class: 'btn', onclick: () => { removeUserPhoto(p); toast('직접 넣은 사진을 지웠어요'); showState(); } }, '지우기')),
+      urlIn,
+      h('button', { type: 'button', class: 'btn block', onclick: applyUrl }, '주소로 넣기'),
+      fileIn);
+    showState();
+
     view.append(
       h('h3', null, '장소 수정'),
-      nameIn, memoIn,
+      nameIn, memoIn, photoBox,
       h('div', { class: 'row' },
         h('button', { type: 'button', class: 'btn', onclick: showList }, '취소'),
         h('button', { type: 'button', class: 'btn primary', onclick: save }, '저장')));
