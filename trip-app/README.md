@@ -101,6 +101,7 @@ Worker 소스는 이 저장소에 없다(비공개, Cloudflare 대시보드에�
 - 오류 문구: 401 "토큰이 달라요", 429 "잠시 뒤에 다시 시도해 주세요(N분 뒤)", 503/500/403 "서버 설정을 확인해 주세요", 네트워크 실패 "연결을 확인해 주세요". 토큰과 응답 내용은 문구에 넣지 않는다.
 
 ### GET /wiki (장소 대표 사진)
+- 이름 보강: `config.js` 의 `nameLangs`(기본 `['zh-TW', 'en']`, 나라가 바뀌면 직접 고침)를 링크 해석 호출(`GET /?url=`)에 `&langs=zh-TW,en` 으로 붙인다. 응답의 `names`(언어 -> 이름)는 사진 검색에만 그 자리에서 쓰고 저장하지도 화면에 보이지도 않는다(구글 콘텐츠 캐시 금지). `/wiki` 호출은 `name=`(사용자가 확정한 이름)에 `alt=`(names[언어], 언어 순서, 값이 없거나 name 과 같거나 중복이면 생략)를 반복해서 붙인다. `names_status` 가 `partial` 이거나 `names` 가 없으면 name 만으로 호출한다. alt 는 처음 등록할 때만 있고, 이름을 고칠 때는 name 만 보낸다. 응답의 `matchedText` 는 저장하지 않으며 `match` 가 `brand` 일 때의 태그 문구는 기존 그대로다.
 
 - 호출: `GET {resolverUrl}/wiki?name={장소 이름}&near={위도,경도}&radiusKm={숫자}` (POST `{name, near, radiusKm}` 도 가능). `near`, `radiusKm` 은 선택이다.
 - `near` 는 config.js 의 `destinationCenter`(여행지 중심, 직접 입력한 값)만 쓴다. 비우거나 형식이 틀리면 `near`, `radiusKm` 없이 이름만 보낸다. 장소의 구글 좌표나 GPS 값은 보내지 않는다. 반경은 `wikiRadiusKm`(기본 80).

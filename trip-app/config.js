@@ -7,6 +7,9 @@ export const CONFIG = {
   resolverUrl: 'https://getgooglemapurl.runaica90.workers.dev',
   // 지도 열기의 마지막 대체 검색어에 붙는 도시(이름 + 도시로 검색).
   destinationCity: '타이베이',
+  // 장소 이름을 보강할 언어(여행지 현지어와 영어). 링크 해석 호출에 &langs= 로 붙는다. 나라가 바뀌면 직접 고친다.
+  // 돌려받은 이름은 사진 검색에만 임시로 쓰고 저장하거나 화면에 보여 주지 않는다.
+  nameLangs: ['zh-TW', 'en'],
   // 요약 탭 숙소 카드에 붙는 부가 정보. 공개 저장소에 올라가는 값이다(주소와 링크를 공개해도 된다고 정했음).
   // id: 이 id 의 숙소 문서에 붙인다(없고 숙소가 하나뿐이면 그 숙소에). 숙소 문서가 하나도 없으면 name, checkIn, checkOut 으로 카드를 대신 만든다.
   // image 는 이 앱 폴더 안의 사진 경로, mapUrl 은 주소 옆 지도 버튼, airbnbUrl 은 에어비앤비 링크 버튼. 비우면 그 항목은 안 보인다.
