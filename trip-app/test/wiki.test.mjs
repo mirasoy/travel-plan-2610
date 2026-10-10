@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createWiki, shouldLookup, BRAND_TAG, photoFromResponse, validStoredPhoto, sanitizeStoredPhoto, hasVisiblePhoto, plainText, parseCenter, creditText, renderPhoto, WIKI_TIMEOUT_MS } from '../wiki.js';
+import { createWiki, shouldLookup, BRAND_TAG, photoFromResponse, cleanLangs, langsParam, altNamesFrom, ALT_MAX, validStoredPhoto, sanitizeStoredPhoto, hasVisiblePhoto, plainText, parseCenter, creditText, renderPhoto, WIKI_TIMEOUT_MS } from '../wiki.js';
 import { parseExport } from '../trip-import.js';
 import { fakeTimers, fakeFetch, fakeResponse, FakeDocument, FakeElement, loadAppHelpers, byTag, byClass, walk, readApp } from './helpers.mjs';
 
@@ -331,4 +331,92 @@ test('화면 문구에 이모지가 없다(브랜드 태그, 출처 줄)', () =>
   const { h } = loadAppHelpers(doc, new FakeElement('div'));
   const fig = renderPhoto(h, photoFromResponse(okBody({ match: 'brand' }), 1));
   assert.ok(!/\p{Extended_Pictographic}/u.test(fig.textContent + BRAND_TAG));
+});
+
+/* ---------- 장소 이름 다국어 보강 ---------- */
+
+test('config.nameLangs 와 langs 쿼리: 쉼표로 이은 값, 형식이 틀린 코드와 중복은 제외, 비면 붙이지 않음', () => {
+  assert.match(readApp('config.js'), /nameLangs:\s*\['zh-TW', 'en'\]/);
+  assert.deepEqual(cleanLangs(['zh-TW', 'en', 'en', ' ja ', 'x', '한국어', '', null, 5, 'en-US-x-y-z-q']), ['zh-TW', 'en', 'ja']);
+  assert.equal(langsParam(['zh-TW', 'en']), '&langs=zh-TW,en');
+  assert.equal(langsParam([]), '');
+  assert.equal(langsParam(undefined), '');
+  assert.equal(langsParam('zh-TW'), '', '배열이 아니면 붙이지 않는다');
+  assert.equal(langsParam(['zh-TW&evil=1', 'en']), '&langs=en', '쿼리를 깨는 값은 제외');
+});
+
+test('링크 해석 호출(app.js)에 langs 가 붙는다: 기존 url 인자 뒤, 한 곳에서만', () => {
+  const app = readApp('app.js');
+  assert.equal((app.match(/langsParam\(/g) || []).length, 1);
+  assert.match(app, /'\/\?url=' \+ encodeURIComponent\(url\) \+ langsParam\(CONFIG\.nameLangs\)/);
+});
+
+test('altNamesFrom: 언어 순서대로 names[언어], 값 없음/문자열 아님/name 과 같음(대소문자 무시)/중복은 뺀다', () => {
+  const r = n => ({ names: n, names_status: 'ok' });
+  assert.deepEqual(altNamesFrom(r({ 'zh-TW': '饒河街觀光夜市', en: 'Raohe Street Night Market' }), ['zh-TW', 'en'], '라오허 야시장'), ['饒河街觀光夜市', 'Raohe Street Night Market']);
+  assert.deepEqual(altNamesFrom(r({ 'zh-TW': '饒河街觀光夜市' }), ['zh-TW', 'en'], '라오허 야시장'), ['饒河街觀光夜市'], '없는 언어는 생략');
+  assert.deepEqual(altNamesFrom(r({ en: '  raohe  night market ' }), ['zh-TW', 'en'], 'Raohe Night   Market'), [], 'name 과 같으면(공백, 대소문자 무시) 보내지 않음');
+  assert.deepEqual(altNamesFrom(r({ 'zh-TW': 'Same', en: 'same' }), ['zh-TW', 'en'], '이름'), ['Same'], '서로 같으면 한 번만');
+  assert.deepEqual(altNamesFrom(r({ 'zh-TW': 5, en: null }), ['zh-TW', 'en'], '이름'), []);
+  assert.deepEqual(altNamesFrom(r({ 'zh-TW': 'x'.repeat(201) }), ['zh-TW'], '이름'), [], '너무 긴 값은 보내지 않음');
+  assert.deepEqual(altNamesFrom(r({ ja: '日本語' }), ['zh-TW', 'en'], '이름'), [], 'nameLangs 에 없는 언어는 쓰지 않는다');
+});
+
+test('altNamesFrom: names_status partial 이거나 names 가 없거나 형식이 이상하면 빈 배열(name 만으로 호출)', () => {
+  const n = { 'zh-TW': '饒河街觀光夜市', en: 'Raohe' };
+  assert.deepEqual(altNamesFrom({ names: n, names_status: 'partial' }, ['zh-TW', 'en'], '이름'), []);
+  assert.deepEqual(altNamesFrom({ names_status: 'ok' }, ['zh-TW', 'en'], '이름'), []);
+  assert.deepEqual(altNamesFrom({ names: null }, ['zh-TW', 'en'], '이름'), []);
+  assert.deepEqual(altNamesFrom({ names: ['a'] }, ['zh-TW', 'en'], '이름'), []);
+  assert.deepEqual(altNamesFrom(null, ['zh-TW', 'en'], '이름'), []);
+  assert.deepEqual(altNamesFrom('x', ['zh-TW', 'en'], '이름'), []);
+  assert.ok(altNamesFrom({ names: n }, ['zh-TW', 'en'], '이름').length === 2, 'names_status 가 없어도 names 가 있으면 쓴다');
+  const many = Object.fromEntries(['aa', 'bb', 'cc', 'dd', 'ee', 'ff'].map(l => [l, l + '-name']));
+  assert.equal(altNamesFrom({ names: many }, Object.keys(many), '이름').length, ALT_MAX);
+});
+
+test('사진 검색 요청: name 은 사용자가 확정한 이름, alt 는 값이 있는 것만 반복 파라미터로(같은 이름/중복은 전송 안 함)', async () => {
+  const { wiki, fetchFn } = make(() => fakeResponse(200, okBody()));
+  await wiki.lookup('라오허 야시장', ['饒河街觀光夜市', 'Raohe Street Night Market']);
+  const u = new URL(fetchFn.calls[0].url);
+  assert.equal(u.searchParams.get('name'), '라오허 야시장');
+  assert.deepEqual(u.searchParams.getAll('alt'), ['饒河街觀光夜市', 'Raohe Street Night Market']);
+  assert.match(fetchFn.calls[0].url, /[?&]alt=%E9%A5%92/, '인코딩되어 전송');
+  assert.deepEqual([...u.searchParams.keys()].sort(), ['alt', 'alt', 'name', 'near', 'radiusKm']);
+
+  const b = make(() => fakeResponse(200, okBody()));
+  await b.wiki.lookup('Raohe Night Market', ['raohe night market', 'RAOHE  night market', '饒河', '饒河', '', null, 5, 'y'.repeat(201)]);
+  assert.deepEqual(new URL(b.fetchFn.calls[0].url).searchParams.getAll('alt'), ['饒河']);
+
+  const c = make(() => fakeResponse(200, okBody()));
+  await c.wiki.lookup('이름'); await c.wiki.lookup('이름', []); await c.wiki.lookup('이름', 'str');
+  c.fetchFn.calls.forEach(x => assert.ok(!new URL(x.url).searchParams.has('alt')), 'alt 가 없으면 파라미터 자체를 보내지 않는다');
+});
+
+test('응답의 matchedText 는 저장하지도 표시하지도 않는다. brand 태그 규칙은 그대로', () => {
+  const body = okBody({ match: 'brand', matchedText: 'SECRET-MATCHED-TEXT', names: { en: 'LEAK' } }, { matchedText: 'SECRET-MATCHED-TEXT' });
+  const p = photoFromResponse(body, 1);
+  assert.ok(p && p.match === 'brand');
+  assert.ok(!JSON.stringify(p).includes('SECRET-MATCHED-TEXT') && !JSON.stringify(p).includes('LEAK') && !('matchedText' in p));
+  const { h } = loadAppHelpers(new FakeDocument(), new FakeElement('div'));
+  const fig = renderPhoto(h, p);
+  assert.ok(!fig.textContent.includes('SECRET-MATCHED-TEXT'));
+  assert.ok(byClass(fig, 'photo-tag').some(t => t.textContent === BRAND_TAG), 'brand 이면 기존 태그 문구');
+  const exact = renderPhoto(h, photoFromResponse(okBody({ matchedText: 'X' }), 1));
+  assert.equal(byClass(exact, 'photo-tag').length, 0);
+  const src = readApp('app.js') + readApp('wiki.js') + readApp('trip-import.js');
+  assert.ok(!/matchedText/.test(src), '소스 어디에서도 matchedText 를 다루지 않는다');
+});
+
+test('앱 규칙: 다른 언어 이름(alt/names)은 어떤 저장 코드에도 들어가지 않고 화면 렌더링에도 쓰이지 않는다', () => {
+  const app = readApp('app.js');
+  const lines = app.split('\n');
+  const writeLines = lines.filter(l => /setDoc\(|updateDoc\(|batch\.(set|update)\(|localStorage|sessionStorage|console\./.test(l));
+  assert.ok(writeLines.every(l => !/altNames|\bnames\b|\balts?\b|names_status/.test(l)), '저장, 로그 코드에 alt/names 가 섞이면 안 된다');
+  assert.ok(!/\.names\b|names_status/.test(app), 'app.js 는 names 를 직접 만지지 않는다(altNamesFrom 만 사용)');
+  const draftData = app.match(/const data = \{\n\s*name, rawTitle[\s\S]*?\n\s*\};/)[0];
+  assert.ok(!/resp|alt|names/.test(draftData), '풀 문서 필드에 응답 값이 섞이지 않는다');
+  const calls = app.match(/requestPhoto\([^\n]*altNamesFrom\([^\n]*\)/g) || [];
+  assert.equal(calls.length, 2, '처음 등록과 이름 확정(중복 장소 이름 채움) 두 곳에서만 alt 를 넘긴다');
+  assert.ok(/requestPhoto\(p\.id, t\);/.test(app), '이름 수정에서는 name 만으로 호출한다');
 });

@@ -94,6 +94,47 @@ export function shouldLookup(tried, poolId, name, photo) {
   return nm;
 }
 
+// ---- 장소 이름 다국어 보강 ----
+// 링크 해석 응답의 names(언어 코드 -> 이름)는 사진 검색의 alt 로 "그 자리에서 잠깐" 쓰고 버린다. 저장하지 않고, 화면에 보여 주지도 않는다
+// (구글 콘텐츠 캐시 금지). 저장되는 이름은 사용자가 확정한 name 뿐이다.
+const LANG_RE = /^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8}){0,3}$/;
+export const ALT_MAX = 4;
+
+// config.nameLangs -> 형식이 맞는 언어 코드 배열(중복 제거). 배열이 아니면 [].
+export function cleanLangs(v) {
+  if (!Array.isArray(v)) return [];
+  const out = [];
+  for (const x of v) if (typeof x === 'string' && LANG_RE.test(x.trim()) && !out.includes(x.trim())) out.push(x.trim());
+  return out;
+}
+
+// 링크 해석 호출에 붙일 쿼리 조각: "&langs=zh-TW,en" (없으면 '')
+export function langsParam(langs) {
+  const l = cleanLangs(langs);
+  return l.length ? '&langs=' + l.join(',') : '';
+}
+
+const fold = s => s.replace(/\s+/g, ' ').trim().toLowerCase();
+
+// 응답(names, names_status) -> 사진 검색에 넘길 alt 배열. 언어 순서대로 names[언어]를 쓰고,
+// 값이 없거나 문자열이 아니거나 name 과(대소문자 무시) 같거나 이미 담은 것과 같으면 뺀다.
+// names_status 가 'partial' 이거나 names 가 없으면 [](name 만으로 호출).
+export function altNamesFrom(resp, langs, name) {
+  if (!isObj(resp) || resp.names_status === 'partial' || !isObj(resp.names)) return [];
+  const base = fold(String(name || ''));
+  const out = [], seen = new Set([base]);
+  for (const lang of cleanLangs(langs)) {
+    const v = resp.names[lang];
+    if (typeof v !== 'string') continue;
+    const t = v.replace(/\s+/g, ' ').trim();
+    if (!t || t.length > NAME_MAX || seen.has(fold(t))) continue;
+    seen.add(fold(t));
+    out.push(t);
+    if (out.length >= ALT_MAX) break;
+  }
+  return out;
+}
+
 // "위도,경도" 문자열 -> 정규화된 문자열 또는 null
 export function parseCenter(v) {
   const m = /^\s*(-?\d{1,2}(?:\.\d+)?)\s*,\s*(-?\d{1,3}(?:\.\d+)?)\s*$/.exec(String(v == null ? '' : v));
@@ -109,12 +150,20 @@ export function createWiki(deps) {
 
   return {
     // 이름으로 사진을 한 번 조회한다. 절대 던지지 않는다. 반환: { ok: true, photo } | { ok: false }
-    async lookup(name) {
+    // alts: 다른 언어 이름(선택). name 과 같은 것, 중복, 너무 긴 것은 보내지 않는다. 저장하지 않는다.
+    async lookup(name, alts) {
       const base = getBaseUrl && getBaseUrl();
       const nm = typeof name === 'string' ? name.replace(/\s+/g, ' ').trim() : '';
       if (!base || !nm || nm.length > NAME_MAX) return none;
 
       const q = new URLSearchParams({ name: nm });
+      const sent = new Set([fold(nm)]);
+      for (const a of Array.isArray(alts) ? alts : []) {
+        const t = typeof a === 'string' ? a.replace(/\s+/g, ' ').trim() : '';
+        if (!t || t.length > NAME_MAX || sent.has(fold(t)) || sent.size > ALT_MAX) continue;
+        sent.add(fold(t));
+        q.append('alt', t);
+      }
       const center = parseCenter(getCenter && getCenter());
       if (center) {
         q.set('near', center);

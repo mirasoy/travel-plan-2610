@@ -11,7 +11,7 @@ import { resolveKey, extractKey, saveKey, clearKey, inviteLink } from './trip-ke
 import { parseExport, summarize, chunk, COLLECTIONS, LIMITS, BATCH_SIZE } from './trip-import.js';
 import { buildSummary, renderCard } from './trip-summary.js';
 import { createSwipe, OPEN_PX } from './swipe.js';
-import { createWiki, renderPhoto, hasVisiblePhoto, shouldLookup } from './wiki.js';
+import { createWiki, renderPhoto, hasVisiblePhoto, shouldLookup, langsParam, altNamesFrom } from './wiki.js';
 import { cleanUserPhoto, cleanPhotoUrl, cleanDataUrl, shrinkToLimit, renderUserPhoto } from './user-photo.js';
 
 
@@ -171,7 +171,7 @@ async function callResolver(url) {
   const ctl = new AbortController();
   const timer = setTimeout(() => ctl.abort(), RESOLVER_TIMEOUT_MS);
   try {
-    const res = await fetch(CONFIG.resolverUrl + '/?url=' + encodeURIComponent(url), { signal: ctl.signal });
+    const res = await fetch(CONFIG.resolverUrl + '/?url=' + encodeURIComponent(url) + langsParam(CONFIG.nameLangs), { signal: ctl.signal });
     let j = null;
     try { j = await res.json(); } catch (e) { return { kind: 'failed', reason: 'not_json' }; }
     if (res.status === 403) {
@@ -212,7 +212,8 @@ function buildDraft(inputUrl, r) {
   const d = {
     mapUrl: inputUrl ? cleanMapUrl(inputUrl) : '',
     name: '', address: '', rawTitle: '', placeId: null, fid: null, cid: null,
-    notice: '', focus: true
+    notice: '', focus: true,
+    resp: r.resp || null   // 사진 검색의 alt 이름을 뽑는 데만 쓴다(altNamesFrom). 저장하지 않는다
   };
   const resp = r.resp;
   if (resp) {
@@ -265,7 +266,7 @@ async function registerAndAdd(text, pending, nameOverride) {
     } else {
       const nm = singleLine(raw);
       if (!nm) return { error: '입력한 내용이 없어요' };
-      d = { mapUrl: '', name: nm, rawTitle: '', placeId: null, fid: null, cid: null, notice: '' };
+      d = { mapUrl: '', name: nm, rawTitle: '', placeId: null, fid: null, cid: null, notice: '', resp: null };
     }
   }
   const name = singleLine(nameOverride != null ? nameOverride : d.name);
@@ -276,7 +277,11 @@ async function registerAndAdd(text, pending, nameOverride) {
   const dup = findDuplicate(d);
   if (dup) {
     poolId = dup.id;
-    if (!dup.name) { dup.name = name; updateDoc(doc(poolCol, dup.id), { name }).catch(fail('이름 저장')); requestPhoto(dup.id, name); }
+    if (!dup.name) {
+      dup.name = name;
+      updateDoc(doc(poolCol, dup.id), { name }).catch(fail('이름 저장'));
+      requestPhoto(dup.id, name, altNamesFrom(d.resp, CONFIG.nameLangs, name));
+    }
   } else {
     const ref = doc(poolCol);
     const data = {
@@ -287,7 +292,7 @@ async function registerAndAdd(text, pending, nameOverride) {
     // 스냅샷은 state.pool 을 통째로 교체하므로 낙관적 반영을 쓰기 호출보다 먼저 한다.
     state.pool.push({ id: ref.id, ...data });
     setDoc(ref, data).catch(fail('저장')); // 오프라인 대기 방지: await 하지 않는다
-    requestPhoto(ref.id, name);            // 사진은 저장이 끝난 뒤 따로 조회한다(기다리지 않는다)
+    requestPhoto(ref.id, name, altNamesFrom(d.resp, CONFIG.nameLangs, name));   // 사진은 저장이 끝난 뒤 따로 조회한다(기다리지 않는다)
     poolId = ref.id;
   }
   addItem({ poolId, title: name });
@@ -582,13 +587,14 @@ const wiki = createWiki({
 });
 const wikiTried = new Map(); // 장소 ID -> 마지막으로 조회한 이름(같은 이름 중복 호출 방지)
 
-function requestPhoto(poolId, name) {
+// alts: 링크 해석 응답에서 뽑은 다른 언어 이름. 이번 호출에만 쓰고 어디에도 저장하지 않는다(처음 등록할 때만 있다).
+function requestPhoto(poolId, name, alts) {
   if (!CONFIG.resolverUrl) return;
   const p = state.pool.find(x => x.id === poolId);
   if (p && p.userPhoto) return;                          // 직접 넣은 사진이 있으면 자동 조회하지 않는다
   const nm = shouldLookup(wikiTried, poolId, singleLine(name), p && p.photo);   // 빈 이름, 숨긴 사진, 같은 이름 중복 호출을 막는다
   if (!nm) return;
-  wiki.lookup(nm).then(r => {
+  wiki.lookup(nm, alts).then(r => {
     if (!r.ok) return;
     const cur = state.pool.find(x => x.id === poolId);
     if (!cur || singleLine(cur.name) !== nm) return;      // 그 사이 삭제됐거나 이름이 또 바뀜
